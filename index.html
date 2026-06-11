@@ -210,7 +210,6 @@
             if (document.getElementById('student-shop-page').classList.contains('active')) renderStudentShop();
         });
 
-        // 실시간 리스너 강화: 로비가 활성 상태일 때 데이터 변경 시 무조건 재렌더링
         db.ref('onlineUsers').on('value', (snapshot) => {
             localOnlineUsers = snapshot.val() || {};
             if (document.getElementById('student-lobby-page').classList.contains('active')) renderOnlineUsers();
@@ -251,11 +250,10 @@
             if (pageId === 'student-lobby-page') {
                 const logDiv = document.getElementById('chat-log');
                 logDiv.scrollTop = logDiv.scrollHeight;
-                renderOnlineUsers(); // 페이지 진입 시 강제 렌더링
+                renderOnlineUsers();
             }
         }
 
-        // [중요 수정] 아바타 장착 시 로비 화면 즉시 갱신
         function applySelectedAvatar() {
             if (!tempSelectedAvatar) return;
             myCurrentAvatar = tempSelectedAvatar;
@@ -263,7 +261,7 @@
             db.ref('onlineUsers/' + currentUser).update({ avatarId: tempSelectedAvatar });
             
             showPage('student-lobby-page');
-            renderOnlineUsers(); // 변경 직후 즉시 렌더링 호출
+            renderOnlineUsers();
         }
 
         function checkAdminLogin() {
@@ -461,7 +459,28 @@
             const input = document.getElementById('chat-input');
             const msg = input.value.trim();
             if (!msg || !currentUser) return;
-            db.ref('chatLog').push().set({ sender: currentUser, message: msg, timestamp: firebase.database.ServerValue.TIMESTAMP });
+
+            // 1. 메시지 추가
+            const newChatRef = db.ref('chatLog').push();
+            newChatRef.set({ 
+                sender: currentUser, 
+                message: msg, 
+                timestamp: firebase.database.ServerValue.TIMESTAMP 
+            });
+
+            // 2. 메시지 개수 제한 로직 (50개 초과 시 가장 오래된 것 삭제)
+            db.ref('chatLog').once('value', (snapshot) => {
+                const chats = snapshot.val();
+                if (chats) {
+                    const chatKeys = Object.keys(chats);
+                    if (chatKeys.length > 50) {
+                        const oldestKey = chatKeys[0];
+                        db.ref('chatLog/' + oldestKey).remove();
+                    }
+                }
+            });
+
+            // 3. 말풍선 처리
             const now = Date.now();
             db.ref('onlineUsers/' + currentUser).update({ bubble: msg, bubbleTime: now });
             input.value = '';
