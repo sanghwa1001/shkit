@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>로그인 시스템 (보석 상점 추가)</title>
+    <title>로그인 시스템 (상점 관리 UI 개선)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -163,7 +163,7 @@
         let localOnlineUsers = {}; 
         let localShopItems = []; 
         let localShopNames = {}; 
-        let localShopPrices = {}; // [추가] 아바타 가격 저장 객체
+        let localShopPrices = {}; 
 
         // === 실시간 데이터 동기화 ===
         db.ref('studentAccounts').on('value', (snapshot) => {
@@ -190,7 +190,6 @@
             if (document.getElementById('storage-page').classList.contains('active')) renderAvatarList();
         });
 
-        // [추가] 가격 데이터 동기화
         db.ref('shopItemPrices').on('value', (snapshot) => {
             localShopPrices = snapshot.val() || {};
             if (document.getElementById('admin-shop-page').classList.contains('active')) renderAdminShopPage();
@@ -211,7 +210,6 @@
             }
         }
 
-        // === 관리자 기능 ===
         function checkAdminLogin() {
             const inputId = document.getElementById('admin-id').value;
             const inputPw = document.getElementById('admin-pw').value;
@@ -228,7 +226,6 @@
             if (newId === '' || newPw === '') return alert('아이디와 비밀번호를 모두 입력해주세요.');
             if (localStudentAccounts[newId]) return alert('이미 존재하는 아이디입니다.');
 
-            // [추가] 계정 생성 시 기본 10보석 지급
             db.ref('studentAccounts/' + newId).set({
                 pw: newPw,
                 avatarId: DEFAULT_AVATARS[0],
@@ -259,7 +256,6 @@
                     if (id === '' || pw === '' || id === '아이디' || id.toLowerCase() === 'id') continue;
                     if (localStudentAccounts[id]) { duplicateCount++; continue; }
 
-                    // [추가] 일괄 생성 시에도 기본 10보석 지급
                     updates[id] = { pw: pw, avatarId: DEFAULT_AVATARS[0], ownedAvatars: DEFAULT_AVATARS, gems: 10 };
                     successCount++;
                 }
@@ -338,19 +334,20 @@
                 itemDiv.innerHTML = `
                     <img src="${avatarId}" alt="아바타">
                     
-                    <div id="view-mode-${index}" style="margin: 5px 0; display:flex; align-items:center; gap:5px; justify-content:center;">
+                    <div id="view-name-mode-${index}" style="margin-top: 5px; display:flex; align-items:center; gap:5px; justify-content:center;">
                         <span style="font-size: 12px; color: #333; font-weight:bold;">${currentName}</span>
                         <span title="이름 수정" style="cursor: pointer; font-size: 12px; background: #eee; padding: 2px 4px; border-radius: 4px;" onclick="enableEditMode(event, ${index}, 'name')">✏️</span>
-                        <span title="가격 수정" style="cursor: pointer; font-size: 12px; background: #eee; padding: 2px 4px; border-radius: 4px;" onclick="enableEditMode(event, ${index}, 'price')">💎</span>
                     </div>
-                    <div style="font-size: 11px; color: #ff9800; font-weight: bold; margin-bottom: 5px;">가격: 💎 ${currentPrice}</div>
-
-                    <div id="edit-name-mode-${index}" style="margin: 5px 0; display:none; align-items:center; gap:5px; justify-content:center;">
+                    <div id="edit-name-mode-${index}" style="margin-top: 5px; display:none; align-items:center; gap:5px; justify-content:center;">
                         <input type="text" id="name-input-${index}" value="${currentName}" style="width: 80px; padding: 2px; font-size: 11px; text-align: center; border: 1px solid #ccc; border-radius: 3px;" onclick="event.stopPropagation();" onkeypress="handleEnter(event, '${avatarId}', ${index}, 'name')">
                         <span title="저장" style="cursor: pointer; font-size: 12px; background: #d4edda; color: #155724; padding: 2px 4px; border-radius: 4px;" onclick="saveSingleData(event, '${avatarId}', ${index}, 'name')">✔️</span>
                     </div>
 
-                    <div id="edit-price-mode-${index}" style="margin: 5px 0; display:none; align-items:center; gap:5px; justify-content:center;">
+                    <div id="view-price-mode-${index}" style="margin-top: 5px; margin-bottom: 5px; display:flex; align-items:center; gap:5px; justify-content:center;">
+                        <span style="font-size: 12px; color: #ff9800; font-weight:bold;">${currentPrice}</span>
+                        <span title="가격 수정" style="cursor: pointer; font-size: 12px; background: #eee; padding: 2px 4px; border-radius: 4px;" onclick="enableEditMode(event, ${index}, 'price')">💎</span>
+                    </div>
+                    <div id="edit-price-mode-${index}" style="margin-top: 5px; margin-bottom: 5px; display:none; align-items:center; gap:5px; justify-content:center;">
                         <input type="number" id="price-input-${index}" value="${currentPrice}" min="0" style="width: 50px; padding: 2px; font-size: 11px; text-align: center; border: 1px solid #ccc; border-radius: 3px;" onclick="event.stopPropagation();" onkeypress="handleEnter(event, '${avatarId}', ${index}, 'price')">
                         <span title="저장" style="cursor: pointer; font-size: 12px; background: #d4edda; color: #155724; padding: 2px 4px; border-radius: 4px;" onclick="saveSingleData(event, '${avatarId}', ${index}, 'price')">✔️</span>
                     </div>
@@ -368,9 +365,10 @@
             });
         }
 
+        // [수정] 타입(name, price)에 따라 분리하여 수정창 띄우기
         function enableEditMode(event, index, type) {
             event.stopPropagation();
-            document.getElementById(`view-mode-${index}`).style.display = 'none';
+            document.getElementById(`view-${type}-mode-${index}`).style.display = 'none';
             
             const editMode = document.getElementById(`edit-${type}-mode-${index}`);
             editMode.style.display = 'flex';
@@ -379,7 +377,6 @@
             inputField.focus(); 
         }
 
-        // [통합] 이름 또는 가격을 저장하는 함수
         function saveSingleData(event, avatarId, index, type) {
             event.stopPropagation();
             const inputField = document.getElementById(`${type}-input-${index}`);
@@ -399,7 +396,7 @@
                 const currentPriceInDB = localShopPrices[dbKey] !== undefined ? localShopPrices[dbKey] : 1;
                 let parsedPrice = parseInt(newValue, 10);
                 
-                if (isNaN(parsedPrice) || parsedPrice < 0) parsedPrice = 1; // 기본값 방어
+                if (isNaN(parsedPrice) || parsedPrice < 0) parsedPrice = 1;
 
                 if (parsedPrice !== currentPriceInDB) {
                     db.ref('shopItemPrices/' + dbKey).set(parsedPrice).then(() => renderAdminShopPage());
@@ -437,7 +434,6 @@
                 currentUser = inputId;
                 myCurrentAvatar = account.avatarId || DEFAULT_AVATARS[0];
                 
-                // 기존 가입자 데이터 호환 (없으면 기본값)
                 if (!account.ownedAvatars) db.ref('studentAccounts/' + currentUser).update({ ownedAvatars: DEFAULT_AVATARS });
                 if (account.gems === undefined) db.ref('studentAccounts/' + currentUser).update({ gems: 10 });
 
@@ -489,7 +485,6 @@
             const listDiv = document.getElementById('student-shop-list');
             listDiv.innerHTML = '';
 
-            // 내 보석 표시 업데이트
             const myGems = localStudentAccounts[currentUser]?.gems || 0;
             document.getElementById('my-gems-display').innerText = `내 보석: 💎 ${myGems}`;
 
@@ -536,14 +531,13 @@
 
             if (myOwnedAvatars.includes(avatarId)) return alert('이미 보유한 아바타입니다.');
             
-            // 보석 차감 로직
             if (myGems < price) {
                 alert('보석이 부족합니다!');
                 return;
             }
 
-            myGems -= price; // 보석 차감
-            myOwnedAvatars.push(avatarId); // 소유 리스트에 추가
+            myGems -= price; 
+            myOwnedAvatars.push(avatarId); 
             
             db.ref('studentAccounts/' + currentUser).update({ 
                 ownedAvatars: myOwnedAvatars,
