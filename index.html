@@ -355,10 +355,12 @@
             }
         });
 
+        // ⭐ 수정된 부분: 조르기 버튼 상태 변경 로직 적용
         function listenForGemRequests() {
             db.ref(`gemRequests/${currentUser}`).on('value', snapshot => {
                 const reqs = snapshot.val();
                 pendingRequests = [];
+                
                 if (reqs) {
                     for (let key in reqs) {
                         pendingRequests.push({ key, ...reqs[key] });
@@ -366,12 +368,13 @@
                 }
                 
                 const acceptBtn = document.getElementById('accept-request-btn');
+                
                 if (pendingRequests.length > 0) {
                     acceptBtn.disabled = false;
                     acceptBtn.style.backgroundColor = '#ff9800'; 
                     acceptBtn.style.borderColor = '#e65100';
                     acceptBtn.style.boxShadow = '0 4px 0 #bf360c';
-                    acceptBtn.innerText = `🤝 수락`; 
+                    acceptBtn.innerText = `🤝 수락 (${pendingRequests.length})`; 
                 } else {
                     acceptBtn.disabled = true;
                     acceptBtn.style.backgroundColor = '#ccc';
@@ -386,7 +389,6 @@
             });
         }
 
-        // 1초마다 조르기 요청 만료 확인 및 카운트다운 렌더링
         setInterval(() => {
             if (!currentUser || isAdmin) return;
             
@@ -396,9 +398,8 @@
             pendingRequests.forEach(req => {
                 if (req.expiresAt && now > req.expiresAt) {
                     if (req.isDeleting) return;
-                    req.isDeleting = true; // 중복 실행 방지
+                    req.isDeleting = true; 
 
-                    // 데이터베이스에서 삭제
                     db.ref(`gemRequests/${currentUser}/${req.key}`).remove().then(() => {
                         const requesterNick = localStudentAccounts[req.from]?.nickname || req.from;
                         const myNick = localStudentAccounts[currentUser]?.nickname || currentUser;
@@ -407,12 +408,11 @@
                             sender: 'system',
                             message: `${requesterNick}이(가) ${myNick}에게 보낸 조르기 요청이 1분 경과로 취소되었습니다. ⏳`,
                             isAlert: true,
-                            alertColor: '#6c757d', // 회색 안내
+                            alertColor: '#6c757d', 
                             timestamp: firebase.database.ServerValue.TIMESTAMP
                         });
                     });
                 } else if (req.expiresAt) {
-                    // 남은 시간 계산 후 DOM 직접 업데이트 (애니메이션 깜빡임 방지)
                     let timeLeft = Math.max(0, Math.ceil((req.expiresAt - now) / 1000));
                     const safeId = req.from.replace(/[^a-zA-Z0-9_-]/g, '_');
                     const badgeEl = document.getElementById(`badge-${safeId}`);
