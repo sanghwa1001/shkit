@@ -217,7 +217,7 @@
             }
         }
 
-        // === [수정됨] 관리자 로그인 기능 ===
+        // === [수정됨] 관리자 로그인 기능 (@gmail.com 적용) ===
         function checkAdminLogin() {
             const inputId = document.getElementById('admin-id').value.trim();
             const inputPw = document.getElementById('admin-pw').value.trim();
@@ -227,8 +227,8 @@
                 return;
             }
 
-            // 입력한 아이디를 파이어베이스 인증용 이메일 형태로 변환
-            const adminEmail = inputId + "@school.com";
+            // 입력한 아이디를 파이어베이스 인증용 지메일 형태로 변환
+            const adminEmail = inputId + "@gmail.com";
 
             // 파이어베이스 인증 서버에 이메일/비밀번호 로그인 요청
             firebase.auth().signInWithEmailAndPassword(adminEmail, inputPw)
