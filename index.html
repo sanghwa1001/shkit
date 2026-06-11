@@ -18,7 +18,7 @@
         input.login-input { max-width: 350px; margin-left: auto; margin-right: auto; display: block; }
         .login-btn-group { max-width: 350px; margin: 0 auto; }
         button { font-family: 'Jua', sans-serif; width: 100%; padding: 15px 10px; margin: 10px 0; border: 3px solid #0056b3; border-radius: 15px; background-color: #007bff; color: white; font-size: 20px; cursor: pointer; box-shadow: 0 6px 0 #004494; transition: all 0.1s ease; letter-spacing: 1px; white-space: nowrap; overflow: hidden; }
-        button:active { transform: translateY(6px); box-shadow: 0 0 0 #004494; }
+        button:active:not(:disabled) { transform: translateY(6px); box-shadow: 0 0 0 #004494 !important; }
         button:disabled { cursor: not-allowed; opacity: 0.7; }
         .bulk-btn { background-color: #28a745; border-color: #1e7e34; box-shadow: 0 6px 0 #155724; }
         .delete-btn { background-color: #dc3545; border-color: #bd2130; box-shadow: 0 6px 0 #8b1c24; }
@@ -63,10 +63,9 @@
         .lobby-menu-group { display: flex; gap: 10px; margin-top: 15px; }
         .lobby-menu-group button { margin: 0; flex: 1; }
         
-        /* 아바타 리스트 스크롤 문제 해결 (padding 증가 및 가로 스크롤 방지) */
         .avatar-list-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-bottom: 25px; max-height: 450px; overflow-y: auto; overflow-x: hidden; padding: 20px; }
         .avatar-item { border: 3px solid #eee; border-radius: 15px; padding: 15px; text-align: center; background-color: white; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; cursor: pointer; transition: transform 0.2s; }
-        .avatar-item:hover { transform: scale(1.05); z-index: 1; } /* 커질 때 다른 요소를 가리지 않도록 수정 */
+        .avatar-item:hover { transform: scale(1.05); z-index: 1; }
         .avatar-item.selected, .online-user-item.selected { border-color: #ff9800; background-color: #fff3e0; box-shadow: 0 0 12px rgba(255,152,0,0.6); }
         .buy-btn { width: 100%; padding: 10px 5px; font-size: 15px; margin: 10px 0 0 0; background-color: #17a2b8; border-color: #117a8b; box-shadow: 0 4px 0 #0f6674; border-radius: 10px; white-space: nowrap;}
         .buy-btn:active { transform: translateY(4px); box-shadow: 0 0 0 #0f6674; }
@@ -169,6 +168,15 @@
                         <button onclick="modifyGems('add')" style="margin:0; padding: 6px 12px; font-size: 15px; background-color: #28a745; border-color:#1e7e34; box-shadow: 0 4px 0 #155724; width: auto;">✅ 지급</button>
                         <button onclick="modifyGems('sub')" style="margin:0; padding: 6px 12px; font-size: 15px; background-color: #dc3545; border-color:#bd2130; box-shadow: 0 4px 0 #8b1c24; width: auto;">⛔ 차감</button>
                     </div>
+
+                    <div id="student-gem-controls" style="display: none; align-items: center; gap: 6px;">
+                        <span style="font-weight:bold; font-size:16px; color:#1565c0;">보석</span>
+                        <input type="number" id="student-gem-amount" value="1" min="1" style="width: 50px; margin: 0; padding: 5px; font-size: 16px; text-align: center; border: 2px solid #90caf9; border-radius: 8px;">
+                        <span style="font-weight:bold; font-size:16px; color:#1565c0;">개</span>
+                        <button onclick="giftGems()" style="margin:0; padding: 6px 12px; font-size: 15px; background-color: #28a745; border-color:#1e7e34; box-shadow: 0 4px 0 #155724; width: auto;">🎁 선물</button>
+                        <button onclick="requestGems()" style="margin:0; padding: 6px 12px; font-size: 15px; background-color: #17a2b8; border-color:#117a8b; box-shadow: 0 4px 0 #0f6674; width: auto;">🙏 조르기</button>
+                        <button id="accept-request-btn" onclick="acceptGemRequest()" disabled style="margin:0; padding: 6px 12px; font-size: 15px; background-color: #ccc; border-color:#999; box-shadow: 0 4px 0 #777; width: auto;">수락</button>
+                    </div>
                 </div>
                 <div id="online-users-list"></div>
             </div>
@@ -233,6 +241,7 @@
         let tempSelectedAvatar = null; 
         let isAdmin = false; 
         let selectedStudentsForGems = []; 
+        let pendingRequests = []; // 받은 조르기 요청 배열
         let adminShopReturnPage = 'admin-menu-page'; 
         let adminManageReturnPage = 'admin-menu-page';
         let isChatMuted = false; 
@@ -278,7 +287,7 @@
             const data = snapshot.val();
             const logDiv = document.getElementById('chat-log');
             
-            // 시스템 안내문 렌더링
+            // 💡 시스템 안내문 렌더링 (이름 없이 중앙 정렬)
             if (data.isAlert) {
                 const color = data.alertColor || '#007bff'; 
                 logDiv.innerHTML += `<div style="margin-bottom: 8px; color: ${color}; font-weight: bold; text-align: center; background: #f8f9fa; padding: 6px; border-radius: 8px; border: 2px dashed ${color}80;">📢 ${data.message}</div>`;
@@ -348,6 +357,33 @@
                 }
             }
         });
+
+        function listenForGemRequests() {
+            db.ref(`gemRequests/${currentUser}`).on('value', snapshot => {
+                const reqs = snapshot.val();
+                pendingRequests = [];
+                if (reqs) {
+                    for (let key in reqs) {
+                        pendingRequests.push({ key, ...reqs[key] });
+                    }
+                }
+                
+                const acceptBtn = document.getElementById('accept-request-btn');
+                if (pendingRequests.length > 0) {
+                    acceptBtn.disabled = false;
+                    acceptBtn.style.backgroundColor = '#ff9800'; // 주황색 활성화
+                    acceptBtn.style.borderColor = '#e65100';
+                    acceptBtn.style.boxShadow = '0 4px 0 #bf360c';
+                    acceptBtn.innerText = `수락 (${pendingRequests.length})`;
+                } else {
+                    acceptBtn.disabled = true;
+                    acceptBtn.style.backgroundColor = '#ccc';
+                    acceptBtn.style.borderColor = '#999';
+                    acceptBtn.style.boxShadow = '0 4px 0 #777';
+                    acceptBtn.innerText = '수락';
+                }
+            });
+        }
 
         function showPage(pageId) {
             const pages = document.querySelectorAll('.page');
@@ -591,6 +627,7 @@
             db.ref('studentAccounts/' + currentUser).update({ nickname: finalNickname });
             document.getElementById('welcome-message').innerText = `환영합니다, ${finalNickname}님! ✨`;
             
+            // 학생용 UI 초기화
             document.getElementById('admin-chat-reset-btn').style.display = 'none';
             document.getElementById('admin-mute-btn').style.display = 'none';
             document.getElementById('shop-btn').style.display = 'block';
@@ -598,11 +635,14 @@
             document.getElementById('student-logout-btn').style.display = 'block';
             
             document.getElementById('admin-gem-controls').style.display = 'none';
+            document.getElementById('student-gem-controls').style.display = 'flex'; // 학생 보석 컨트롤 노출
+            
             document.getElementById('admin-shop-lobby-btn').style.display = 'none';
             document.getElementById('admin-manage-lobby-btn').style.display = 'none';
             document.getElementById('admin-back-lobby-btn').style.display = 'none';
             
             selectedStudentsForGems = [];
+            listenForGemRequests(); // 조르기 수신 대기 시작
 
             const myOnlineRef = db.ref('onlineUsers/' + currentUser);
             myOnlineRef.set({ avatarId: myCurrentAvatar, nickname: finalNickname });
@@ -643,6 +683,8 @@
             document.getElementById('student-logout-btn').style.display = 'none';
             
             document.getElementById('admin-gem-controls').style.display = 'flex';
+            document.getElementById('student-gem-controls').style.display = 'none';
+            
             document.getElementById('admin-shop-lobby-btn').style.display = 'block';
             document.getElementById('admin-manage-lobby-btn').style.display = 'block';
             document.getElementById('admin-back-lobby-btn').style.display = 'block';
@@ -661,6 +703,7 @@
         function logoutStudent() {
             if (currentUser && !isAdmin) {
                 db.ref('onlineUsers/' + currentUser).remove();
+                db.ref(`gemRequests/${currentUser}`).off(); // 리스너 해제
             }
             currentUser = null;
             isAdmin = false;
@@ -668,6 +711,7 @@
             document.getElementById('admin-chat-reset-btn').style.display = 'none';
             document.getElementById('admin-mute-btn').style.display = 'none';
             document.getElementById('admin-gem-controls').style.display = 'none';
+            document.getElementById('student-gem-controls').style.display = 'none';
             document.getElementById('admin-shop-lobby-btn').style.display = 'none';
             document.getElementById('admin-manage-lobby-btn').style.display = 'none';
             document.getElementById('admin-back-lobby-btn').style.display = 'none';
@@ -731,6 +775,7 @@
             });
         }
 
+        // 관리자의 보석 지급/차감
         function modifyGems(action) {
             if (selectedStudentsForGems.length === 0) {
                 alert(`보석을 ${action === 'add' ? '지급' : '차감'}할 학생을 선택해 주세요.`);
@@ -763,27 +808,125 @@
                 nicknameArray.push(nick);
             });
             
-            db.ref().update(updates)
-                .then(() => {
-                    const nicknamesStr = nicknameArray.join(', ');
-                    const actionText = action === 'add' ? '지급' : '차감';
-                    const alertColor = action === 'add' ? '#28a745' : '#dc3545'; 
-                    const sysMsg = `${nicknamesStr}이(가) 보석을 ${gemsToModify}개 ${actionText}받았습니다.`;
-                    
-                    db.ref('chatLog').push().set({
-                        sender: 'system',
-                        message: sysMsg,
-                        isAlert: true,
-                        alertColor: alertColor,
-                        timestamp: firebase.database.ServerValue.TIMESTAMP
-                    });
-
-                    selectedStudentsForGems = []; 
-                    renderOnlineUsers();
-                })
-                .catch((error) => {
-                    alert('보석을 업데이트하는 중 오류가 발생했습니다.');
+            db.ref().update(updates).then(() => {
+                const nicknamesStr = nicknameArray.join(', ');
+                const actionText = action === 'add' ? '지급' : '차감';
+                const alertColor = action === 'add' ? '#28a745' : '#dc3545'; 
+                const sysMsg = `${nicknamesStr}이(가) 보석을 ${gemsToModify}개 ${actionText}받았습니다.`;
+                
+                db.ref('chatLog').push().set({
+                    sender: 'system',
+                    message: sysMsg,
+                    isAlert: true,
+                    alertColor: alertColor,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
                 });
+
+                selectedStudentsForGems = []; 
+                renderOnlineUsers();
+            }).catch((error) => {
+                alert('보석을 업데이트하는 중 오류가 발생했습니다.');
+            });
+        }
+
+        // 학생 보석 선물하기
+        function giftGems() {
+            if (selectedStudentsForGems.length === 0) return alert('선물할 친구를 선택해 주세요!');
+            
+            const amt = parseInt(document.getElementById('student-gem-amount').value, 10);
+            if (isNaN(amt) || amt <= 0) return alert('올바른 보석 개수를 입력해 주세요.');
+            
+            const totalCost = amt * selectedStudentsForGems.length;
+            const myGems = localStudentAccounts[currentUser]?.gems || 0;
+            
+            if (myGems < totalCost) return alert(`보석이 부족합니다! (필요: ${totalCost}개, 현재: ${myGems}개)`);
+
+            let updates = {};
+            updates[`studentAccounts/${currentUser}/gems`] = myGems - totalCost;
+            
+            let targetNicks = [];
+            selectedStudentsForGems.forEach(id => {
+                const targetGems = localStudentAccounts[id]?.gems || 0;
+                updates[`studentAccounts/${id}/gems`] = targetGems + amt;
+                targetNicks.push(localStudentAccounts[id]?.nickname || id);
+            });
+
+            db.ref().update(updates).then(() => {
+                const myNick = localStudentAccounts[currentUser]?.nickname || currentUser;
+                db.ref('chatLog').push().set({
+                    sender: 'system',
+                    message: `${myNick}이(가) ${targetNicks.join(', ')}에게 보석 ${amt}개를 선물했습니다. 🎁`,
+                    isAlert: true,
+                    alertColor: '#28a745',
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                });
+                selectedStudentsForGems = [];
+                renderOnlineUsers();
+            });
+        }
+
+        // 학생 보석 조르기
+        function requestGems() {
+            if (selectedStudentsForGems.length === 0) return alert('조를 친구를 선택해 주세요!');
+            
+            const amt = parseInt(document.getElementById('student-gem-amount').value, 10);
+            if (isNaN(amt) || amt <= 0) return alert('올바른 보석 개수를 입력해 주세요.');
+
+            let targetNicks = [];
+            selectedStudentsForGems.forEach(id => {
+                db.ref(`gemRequests/${id}`).push({
+                    from: currentUser,
+                    amount: amt,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                });
+                targetNicks.push(localStudentAccounts[id]?.nickname || id);
+            });
+
+            const myNick = localStudentAccounts[currentUser]?.nickname || currentUser;
+            db.ref('chatLog').push().set({
+                sender: 'system',
+                message: `${myNick}이(가) ${targetNicks.join(', ')}에게 보석 ${amt}개를 조르기했습니다. 🙏`,
+                isAlert: true,
+                alertColor: '#17a2b8', // 파란/청록색 계열
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            });
+
+            selectedStudentsForGems = [];
+            renderOnlineUsers();
+            alert('조르기 요청을 보냈습니다!');
+        }
+
+        // 학생 조르기 수락하기
+        function acceptGemRequest() {
+            if (pendingRequests.length === 0) return;
+            
+            const req = pendingRequests[0]; // 가장 오래된 요청 1개 처리
+            const myGems = localStudentAccounts[currentUser]?.gems || 0;
+            
+            if (myGems < req.amount) {
+                alert(`보석이 부족하여 수락할 수 없습니다. (필요: ${req.amount}개)`);
+                return;
+            }
+
+            const requesterGems = localStudentAccounts[req.from]?.gems || 0;
+            let updates = {};
+            updates[`studentAccounts/${currentUser}/gems`] = myGems - req.amount;
+            updates[`studentAccounts/${req.from}/gems`] = requesterGems + req.amount;
+            updates[`gemRequests/${currentUser}/${req.key}`] = null; // 해당 요청 삭제
+
+            db.ref().update(updates).then(() => {
+                const myNick = localStudentAccounts[currentUser]?.nickname || currentUser;
+                const requesterNick = localStudentAccounts[req.from]?.nickname || req.from;
+
+                db.ref('chatLog').push().set({
+                    sender: 'system',
+                    message: `${myNick}이(가) ${requesterNick}의 조르기를 수락하여 보석 ${req.amount}개를 주었습니다! 🎉`,
+                    isAlert: true,
+                    alertColor: '#28a745',
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                });
+                alert('조르기를 수락했습니다!');
+            });
         }
 
         function renderOnlineUsers() {
@@ -800,23 +943,23 @@
                 const userDiv = document.createElement('div');
                 userDiv.className = 'online-user-item';
                 
-                if (isAdmin && selectedStudentsForGems.includes(id)) {
+                // 학생과 관리자 모두 친구들을 다중 선택 가능
+                if (selectedStudentsForGems.includes(id)) {
                     userDiv.classList.add('selected');
                 }
-                if (isAdmin) {
-                    userDiv.style.cursor = 'pointer';
-                }
                 
-                userDiv.onclick = () => {
-                    if (!isAdmin) return;
-                    
-                    if (selectedStudentsForGems.includes(id)) {
-                        selectedStudentsForGems = selectedStudentsForGems.filter(sid => sid !== id);
-                    } else {
-                        selectedStudentsForGems.push(id);
-                    }
-                    renderOnlineUsers();
-                };
+                // 본인과 관리자는 클릭(선택) 불가
+                if (id !== currentUser) {
+                    userDiv.style.cursor = 'pointer';
+                    userDiv.onclick = () => {
+                        if (selectedStudentsForGems.includes(id)) {
+                            selectedStudentsForGems = selectedStudentsForGems.filter(sid => sid !== id);
+                        } else {
+                            selectedStudentsForGems.push(id);
+                        }
+                        renderOnlineUsers();
+                    };
+                }
 
                 let bubbleHTML = '';
                 if (user.bubble && user.bubbleTime && (now - user.bubbleTime < 5000)) {
