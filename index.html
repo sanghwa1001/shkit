@@ -156,7 +156,14 @@
             <div class="lobby-menu-group">
                 <button id="shop-btn" onclick="showStudentShopPage()" style="background-color: #ff9800; border-color:#e65100; box-shadow: 0 6px 0 #bf360c;">💎 아바타 상점</button>
                 <button id="storage-btn" onclick="showStoragePage()">🎒 내 보관함</button>
-                <button id="admin-gift-btn" onclick="giftGemsToSelected()" style="display: none; background-color: #e67e22; border-color:#d35400; box-shadow: 0 6px 0 #a04000;">🎁 보석 지급</button>
+                
+                <div id="admin-gift-group" style="display: none; align-items: center; justify-content: center; background-color: #e67e22; border: 3px solid #d35400; box-shadow: 0 6px 0 #a04000; border-radius: 15px; flex: 2; padding: 5px; gap: 8px;">
+                    <span style="color: white; font-size: 18px; font-weight:bold;">보석</span>
+                    <input type="number" id="gem-gift-amount" value="1" min="1" style="width: 60px; margin: 0; padding: 8px; font-size: 18px; text-align: center; border-radius: 8px; border: 2px solid #ccc;">
+                    <span style="color: white; font-size: 18px; font-weight:bold;">개</span>
+                    <button onclick="giftGemsToSelected()" style="background-color: #fff; color: #d35400; border: 2px solid #d35400; box-shadow: 0 4px 0 #a04000; width: auto; padding: 8px 15px; margin: 0; font-size: 16px; white-space: nowrap;">지급</button>
+                </div>
+
                 <button class="secondary-btn" onclick="logoutStudent()">로그아웃</button>
             </div>
         </div>
@@ -199,7 +206,7 @@
         let myCurrentAvatar = null;
         let tempSelectedAvatar = null; 
         let isAdmin = false; 
-        let selectedStudentsForGems = []; // 보석을 지급할 다중 선택 학생 배열 추가
+        let selectedStudentsForGems = []; 
 
         let tempShopItems = [];
         let localStudentAccounts = {}; 
@@ -248,7 +255,6 @@
             logDiv.scrollTop = logDiv.scrollHeight;
         });
 
-        // 데이터베이스 초기화 시 클라이언트 채팅창도 지우기 위한 로직
         db.ref('chatLog').on('value', (snapshot) => {
             if (!snapshot.exists()) {
                 document.getElementById('chat-log').innerHTML = '';
@@ -456,7 +462,7 @@
                 document.getElementById('admin-chat-reset-btn').style.display = 'none';
                 document.getElementById('shop-btn').style.display = 'block';
                 document.getElementById('storage-btn').style.display = 'block';
-                document.getElementById('admin-gift-btn').style.display = 'none';
+                document.getElementById('admin-gift-group').style.display = 'none';
                 selectedStudentsForGems = [];
 
                 const myOnlineRef = db.ref('onlineUsers/' + currentUser);
@@ -472,34 +478,31 @@
         function enterAdminLobby() {
             isAdmin = true;
             currentUser = '⭐관리자';
-            myCurrentAvatar = ""; // 관리자는 아바타가 없음
+            myCurrentAvatar = ""; 
             
             document.getElementById('welcome-message').innerText = `환영합니다, 관리자님! 로비 상태를 확인하세요.`;
             document.getElementById('admin-chat-reset-btn').style.display = 'block';
             
-            // 버튼 제어: 상점/보관함 숨기고 보석 지급 버튼 노출
+            // 상점/보관함 숨기고 보석 지급 그룹 노출
             document.getElementById('shop-btn').style.display = 'none';
             document.getElementById('storage-btn').style.display = 'none';
-            document.getElementById('admin-gift-btn').style.display = 'block';
-            selectedStudentsForGems = []; // 다중 선택 초기화
+            document.getElementById('admin-gift-group').style.display = 'flex';
+            selectedStudentsForGems = []; 
             
-            const myOnlineRef = db.ref('onlineUsers/' + currentUser);
-            myOnlineRef.set({ avatarId: "" }); // 데이터베이스에 아바타 없음으로 설정
-            myOnlineRef.onDisconnect().remove(); 
-            
+            // 관리자는 onlineUsers에 아예 데이터를 남기지 않습니다. (아바타 완전히 제외)
             showPage('student-lobby-page');
         }
 
         function logoutStudent() {
-            if (currentUser) {
+            if (currentUser && !isAdmin) {
                 db.ref('onlineUsers/' + currentUser).remove();
-                currentUser = null;
             }
+            currentUser = null;
             isAdmin = false;
             document.getElementById('admin-chat-reset-btn').style.display = 'none';
             document.getElementById('shop-btn').style.display = 'block';
             document.getElementById('storage-btn').style.display = 'block';
-            document.getElementById('admin-gift-btn').style.display = 'none';
+            document.getElementById('admin-gift-group').style.display = 'none';
             selectedStudentsForGems = [];
             showPage('main-page');
         }
@@ -517,44 +520,41 @@
                 timestamp: firebase.database.ServerValue.TIMESTAMP 
             });
 
-            // 2. 말풍선 처리
-            const now = Date.now();
-            db.ref('onlineUsers/' + currentUser).update({ bubble: msg, bubbleTime: now });
+            // 2. 말풍선 처리 (관리자는 말풍선 시스템에 등록하지 않음)
+            if (!isAdmin) {
+                const now = Date.now();
+                db.ref('onlineUsers/' + currentUser).update({ bubble: msg, bubbleTime: now });
+                setTimeout(() => {
+                    db.ref('onlineUsers/' + currentUser).once('value').then(snap => {
+                        const data = snap.val();
+                        if(data && data.bubbleTime === now) {
+                            db.ref('onlineUsers/' + currentUser).update({ bubble: null, bubbleTime: null });
+                        }
+                    });
+                }, 5000);
+            }
             input.value = '';
-            setTimeout(() => {
-                db.ref('onlineUsers/' + currentUser).once('value').then(snap => {
-                    const data = snap.val();
-                    if(data && data.bubbleTime === now) {
-                        db.ref('onlineUsers/' + currentUser).update({ bubble: null, bubbleTime: null });
-                    }
-                });
-            }, 5000);
         }
 
-        // 전체 채팅 지우기 (관리자 전용)
+        // 전체 채팅 지우기
         function clearAllChat() {
             if (confirm('🚨 모든 학생의 채팅 기록을 초기화하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) {
                 db.ref('chatLog').remove()
-                    .then(() => {
-                        alert('채팅 기록이 깔끔하게 지워졌습니다.');
-                    })
-                    .catch((error) => {
-                        alert('초기화 중 오류가 발생했습니다.');
-                    });
+                    .then(() => alert('채팅 기록이 깔끔하게 지워졌습니다.'))
+                    .catch((error) => alert('초기화 중 오류가 발생했습니다.'));
             }
         }
 
-        // 선택된 학생들에게 보석 지급하는 함수 (관리자 전용)
+        // 선택된 학생들에게 보석 일괄 지급 (인라인 인풋)
         function giftGemsToSelected() {
             if (selectedStudentsForGems.length === 0) {
-                alert('보석을 지급할 학생(아바타 카드가 생성된 유저)을 선택해 주세요.');
+                alert('보석을 지급할 학생을 선택해 주세요.');
                 return;
             }
             
-            const inputAmount = prompt(`선택한 ${selectedStudentsForGems.length}명의 학생에게 각각 지급할 보석의 개수를 입력하세요:`, "10");
-            if (inputAmount === null) return; // 취소 클릭 시
+            const amountInput = document.getElementById('gem-gift-amount');
+            const gemsToAdd = parseInt(amountInput.value, 10);
             
-            const gemsToAdd = parseInt(inputAmount, 10);
             if (isNaN(gemsToAdd) || gemsToAdd <= 0) {
                 alert('올바른 보석 개수를 입력해 주세요. (1 이상의 정수)');
                 return;
@@ -569,7 +569,7 @@
             db.ref().update(updates)
                 .then(() => {
                     alert(`${selectedStudentsForGems.length}명의 학생에게 각각 💎 ${gemsToAdd}개의 보석을 지급했습니다!`);
-                    selectedStudentsForGems = []; // 지급 후 선택 초기화
+                    selectedStudentsForGems = []; // 지급 후 다중선택 초기화
                     renderOnlineUsers();
                 })
                 .catch((error) => {
@@ -582,23 +582,26 @@
             listDiv.innerHTML = '';
             const ids = Object.keys(localOnlineUsers);
             if (ids.length === 0) { listDiv.innerHTML = '<p style="color: #888; font-size: 18px;">현재 대기실에 아무도 없습니다.</p>'; return; }
+            
             const now = Date.now();
             ids.forEach(id => {
+                // 안전장치: 혹시라도 관리자 데이터가 남아있으면 화면에 그리지 않음
+                if (id === '⭐관리자') return; 
+
                 const user = localOnlineUsers[id];
                 const userDiv = document.createElement('div');
                 userDiv.className = 'online-user-item';
                 
-                // 관리자가 학생을 클릭하여 다중 선택할 수 있도록 스타일 및 이벤트 추가
+                // 관리자 다중 선택 UI
                 if (isAdmin && selectedStudentsForGems.includes(id)) {
                     userDiv.classList.add('selected');
                 }
-                if (isAdmin && id !== '⭐관리자') {
+                if (isAdmin) {
                     userDiv.style.cursor = 'pointer';
                 }
                 
                 userDiv.onclick = () => {
                     if (!isAdmin) return;
-                    if (id === '⭐관리자') return; // 관리자 자신은 선택 불가
                     
                     if (selectedStudentsForGems.includes(id)) {
                         selectedStudentsForGems = selectedStudentsForGems.filter(sid => sid !== id);
@@ -616,12 +619,7 @@
                 const isMe = (id === currentUser) ? '<span style="color: #ff9800; font-size:14px;">(나)</span>' : '';
                 let displayId = id.length > 5 ? id.substring(0,4) + '..' : id;
                 
-                // 관리자이거나 아바타가 지정되지 않은 경우 이미지 태그 대신 공백 또는 특수문자 박스 처리
-                let avatarHTML = user.avatarId 
-                    ? `<img src="${user.avatarId}" alt="아바타" class="online-user-avatar">` 
-                    : `<div class="online-user-avatar" style="display:flex; align-items:center; justify-content:center; background:#eee; border-radius:12px; font-size:24px; height:60px; width:60px; margin-bottom:8px;">❌</div>`;
-                
-                userDiv.innerHTML = `${bubbleHTML}${avatarHTML}<span style="font-weight:bold;">${displayId} ${isMe}</span>`;
+                userDiv.innerHTML = `${bubbleHTML}<img src="${user.avatarId}" alt="아바타" class="online-user-avatar"><span style="font-weight:bold;">${displayId} ${isMe}</span>`;
                 listDiv.appendChild(userDiv);
             });
         }
