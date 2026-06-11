@@ -38,8 +38,12 @@
         .lobby-title { color: #ff9800; font-size: 44px; margin-top: 0; text-shadow: 2px 2px 0px #ffe0b2; }
         .welcome-text { font-size: 26px; color: #333; margin-bottom: 25px; background: #fff3cd; padding: 15px; border-radius: 12px; border: 3px solid #ffeeba;}
         .online-users-container { background-color: #e3f2fd; border: 3px solid #90caf9; border-radius: 15px; padding: 20px; max-height: 280px; overflow-y: auto; }
-        .online-users-title { font-size: 22px; margin-bottom: 15px; color: #1565c0; border-bottom: 2px dashed #90caf9; padding-bottom: 10px; text-align: left;}
-        #online-users-list { display: flex; flex-wrap: wrap; gap: 12px; padding-top: 20px; justify-content: flex-start; }
+        
+        /* 대기실 헤더용 CSS 추가 및 수정 */
+        .online-users-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed #90caf9; padding-bottom: 10px; margin-bottom: 15px; }
+        .online-users-title { font-size: 22px; color: #1565c0; text-align: left; margin: 0;}
+        
+        #online-users-list { display: flex; flex-wrap: wrap; gap: 12px; padding-top: 10px; justify-content: flex-start; }
         .online-user-item { position: relative; display: flex; flex-direction: column; align-items: center; font-size: 16px; color: #333; background: white; padding: 10px 5px; border-radius: 12px; border: 2px solid #bbdefb; box-shadow: 0 3px 0 #bbdefb; width: 75px;}
         .online-user-avatar { height: 60px; width: auto; margin-bottom: 8px; }
         .speech-bubble { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); background: #fff; border: 3px solid #ff9800; border-radius: 15px; padding: 6px 12px; font-size: 15px; color: #333; white-space: nowrap; z-index: 10; box-shadow: 0 4px 0 rgba(255,152,0,0.5); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
@@ -140,7 +144,17 @@
             <div class="welcome-text" id="welcome-message"></div>
             
             <div class="online-users-container">
-                <div class="online-users-title">🟢 접속 중인 친구들</div>
+                <div class="online-users-header">
+                    <div class="online-users-title">🟢 대기실</div>
+                    
+                    <div id="admin-gem-controls" style="display: none; align-items: center; gap: 6px;">
+                        <span style="font-weight:bold; font-size:16px; color:#1565c0;">보석</span>
+                        <input type="number" id="gem-control-amount" value="1" min="1" style="width: 50px; margin: 0; padding: 5px; font-size: 16px; text-align: center; border: 2px solid #90caf9; border-radius: 8px;">
+                        <span style="font-weight:bold; font-size:16px; color:#1565c0;">개</span>
+                        <button onclick="modifyGems('add')" style="margin:0; padding: 6px 12px; font-size: 15px; background-color: #28a745; border-color:#1e7e34; box-shadow: 0 4px 0 #155724; width: auto;">✅ 지급</button>
+                        <button onclick="modifyGems('sub')" style="margin:0; padding: 6px 12px; font-size: 15px; background-color: #dc3545; border-color:#bd2130; box-shadow: 0 4px 0 #8b1c24; width: auto;">⛔ 차감</button>
+                    </div>
+                </div>
                 <div id="online-users-list"></div>
             </div>
 
@@ -156,18 +170,7 @@
             <div class="lobby-menu-group">
                 <button id="shop-btn" onclick="showStudentShopPage()" style="background-color: #ff9800; border-color:#e65100; box-shadow: 0 6px 0 #bf360c;">💎 아바타 상점</button>
                 <button id="storage-btn" onclick="showStoragePage()">🎒 내 보관함</button>
-                
-                <div id="admin-gem-controls" style="display: none; flex: 2; gap: 10px;">
-                    <div style="display:flex; align-items:center; justify-content:center; background:#f8f9fa; border:3px solid #ccc; border-radius:15px; padding:0 10px;">
-                        <span style="font-weight:bold; font-size:18px; color:#333;">보석</span>
-                        <input type="number" id="gem-control-amount" value="1" min="1" style="width:60px; margin:0 5px; padding:8px; font-size:18px; text-align:center; border:2px solid #ccc; border-radius:8px;">
-                        <span style="font-weight:bold; font-size:18px; color:#333;">개</span>
-                    </div>
-                    <button onclick="modifyGems('add')" style="margin:0; flex:1; background-color: #28a745; border-color:#1e7e34; box-shadow: 0 6px 0 #155724;">✅ 지급</button>
-                    <button onclick="modifyGems('sub')" style="margin:0; flex:1; background-color: #dc3545; border-color:#bd2130; box-shadow: 0 6px 0 #8b1c24;">⛔ 차감</button>
-                </div>
-
-                <button class="secondary-btn" onclick="logoutStudent()" style="flex: 1;">로그아웃</button>
+                <button class="secondary-btn" onclick="logoutStudent()">로그아웃</button>
             </div>
         </div>
 
@@ -485,7 +488,7 @@
             document.getElementById('welcome-message').innerText = `환영합니다, 관리자님! 로비 상태를 확인하세요.`;
             document.getElementById('admin-chat-reset-btn').style.display = 'block';
             
-            // 상점/보관함 숨기고 보석 지급/차감 컨트롤 세트 노출
+            // 상점/보관함 숨기고 대기실 헤더의 보석 컨트롤 노출
             document.getElementById('shop-btn').style.display = 'none';
             document.getElementById('storage-btn').style.display = 'none';
             document.getElementById('admin-gem-controls').style.display = 'flex';
@@ -566,7 +569,7 @@
                 if (action === 'add') {
                     newGems = currentGems + gemsToModify;
                 } else if (action === 'sub') {
-                    newGems = Math.max(0, currentGems - gemsToModify); // 마이너스 보석 방지
+                    newGems = Math.max(0, currentGems - gemsToModify); 
                 }
                 updates[`studentAccounts/${id}/gems`] = newGems;
             });
@@ -575,7 +578,7 @@
                 .then(() => {
                     const actionText = action === 'add' ? '지급' : '차감';
                     alert(`${selectedStudentsForGems.length}명의 학생에게 각각 💎 ${gemsToModify}개의 보석을 ${actionText}했습니다!`);
-                    selectedStudentsForGems = []; // 작업 완료 후 다중선택 초기화
+                    selectedStudentsForGems = []; 
                     renderOnlineUsers();
                 })
                 .catch((error) => {
