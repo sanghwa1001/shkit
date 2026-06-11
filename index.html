@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>로그인 시스템 (상점 관리 UI 개선)</title>
+    <title>로그인 시스템 (상점 관리 다중 선택 개선)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -40,10 +40,11 @@
         
         /* 아바타 그리드(보관함, 상점 관리, 상점 공통) */
         .avatar-list-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px; max-height: 300px; overflow-y: auto; padding: 5px; }
-        .avatar-item { border: 2px solid transparent; border-radius: 10px; padding: 10px; text-align: center; background-color: #f8f9fa; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative;}
+        .avatar-item { border: 2px solid transparent; border-radius: 10px; padding: 10px; text-align: center; background-color: #f8f9fa; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; cursor: pointer;}
         .avatar-item img { height: 85px; width: auto; margin-bottom: 8px; }
-        .avatar-item.selected { border-color: #007bff; background-color: #e6f7ff; }
-        .shop-checkbox { transform: scale(1.3); margin-top: 5px; cursor: pointer; }
+        
+        /* 선택된 아바타 테두리 색상 강조 (보관함 및 관리자 상점 등록용) */
+        .avatar-item.selected { border-color: #007bff; background-color: #e6f7ff; box-shadow: 0 0 5px rgba(0,123,255,0.5); }
         
         .buy-btn { width: 100%; padding: 5px; font-size: 12px; margin: 5px 0 0 0; background-color: #17a2b8; display:flex; justify-content:center; align-items:center; gap:5px; }
         .buy-btn:hover { background-color: #138496; }
@@ -105,9 +106,9 @@
 
         <div id="admin-shop-page" class="page">
             <h2>상점 관리</h2>
-            <p style="font-size: 12px; color: #555; margin-bottom: 10px;">아이콘(✏️,💎)을 눌러 정보 수정 후<br>상점에 등록할 아바타를 체크하세요.</p>
+            <p style="font-size: 12px; color: #555; margin-bottom: 10px;">아이콘(✏️,💎)을 눌러 정보를 수정하고,<br>판매할 아바타를 클릭해 선택(파란 테두리)하세요.</p>
             <div id="admin-shop-list" class="avatar-list-container"></div>
-            <button class="bulk-btn" onclick="saveShopItems()">판매하기 (상점 등록)</button>
+            <button class="bulk-btn" onclick="saveShopItems()">판매하기 (적용)</button>
             <button class="secondary-btn" onclick="showPage('admin-menu-page')">이전으로</button>
         </div>
 
@@ -134,6 +135,7 @@
             <h2>아바타 보관함</h2>
             <p style="font-size: 13px; color: #555;">원하는 아바타를 선택해주세요.</p>
             <div id="avatar-list" class="avatar-list-container"></div>
+            <button class="bulk-btn" onclick="applySelectedAvatar()">확인</button>
             <button class="secondary-btn" onclick="showPage('student-lobby-page')">이전으로</button>
         </div>
     </div>
@@ -159,6 +161,11 @@
         
         let currentUser = null;
         let myCurrentAvatar = null;
+        let tempSelectedAvatar = null; 
+
+        // [추가] 관리자가 상점 관리에서 여러 개를 임시 선택할 배열
+        let tempShopItems = [];
+
         let localStudentAccounts = {}; 
         let localOnlineUsers = {}; 
         let localShopItems = []; 
@@ -314,6 +321,8 @@
 
         // === 상점 관리 페이지 (관리자용) ===
         function showAdminShopPage() {
+            // [추가] 관리자가 설정했던 기존 판매 목록을 임시 배열에 복사
+            tempShopItems = [...localShopItems];
             renderAdminShopPage();
             showPage('admin-shop-page');
         }
@@ -325,12 +334,17 @@
             ALL_SHOP_AVATARS.forEach((avatarId, index) => {
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'avatar-item';
-                const isChecked = localShopItems.includes(avatarId) ? 'checked' : '';
-                const dbKey = avatarId.replace('.', '_');
                 
+                // [수정] 임시 배열(tempShopItems)에 있으면 파란색 테두리 클래스 추가
+                if (tempShopItems.includes(avatarId)) {
+                    itemDiv.classList.add('selected');
+                }
+
+                const dbKey = avatarId.replace('.', '_');
                 const currentName = localShopNames[dbKey] || `아바타 ${index + 1}`;
                 const currentPrice = localShopPrices[dbKey] !== undefined ? localShopPrices[dbKey] : 1;
                 
+                // [수정] 체크박스 제거
                 itemDiv.innerHTML = `
                     <img src="${avatarId}" alt="아바타">
                     
@@ -351,30 +365,32 @@
                         <input type="number" id="price-input-${index}" value="${currentPrice}" min="0" style="width: 50px; padding: 2px; font-size: 11px; text-align: center; border: 1px solid #ccc; border-radius: 3px;" onclick="event.stopPropagation();" onkeypress="handleEnter(event, '${avatarId}', ${index}, 'price')">
                         <span title="저장" style="cursor: pointer; font-size: 12px; background: #d4edda; color: #155724; padding: 2px 4px; border-radius: 4px;" onclick="saveSingleData(event, '${avatarId}', ${index}, 'price')">✔️</span>
                     </div>
-
-                    <input type="checkbox" id="shop-cb-${index}" class="shop-checkbox" value="${avatarId}" ${isChecked}>
                 `;
                 
+                // [수정] 박스 클릭 시 파란 테두리 다중 선택/해제 토글 적용
                 itemDiv.onclick = (e) => {
+                    // 입력창이나 ✏️/💎/✔️ 아이콘 클릭 시에는 테두리 지정이 반응하지 않도록 차단
                     if(e.target.tagName !== 'INPUT' && e.target.tagName !== 'SPAN') {
-                        const cb = document.getElementById(`shop-cb-${index}`);
-                        cb.checked = !cb.checked;
+                        if (tempShopItems.includes(avatarId)) {
+                            // 이미 선택된 항목이면 배열에서 제거
+                            tempShopItems = tempShopItems.filter(id => id !== avatarId);
+                        } else {
+                            // 선택 안 된 항목이면 배열에 추가
+                            tempShopItems.push(avatarId);
+                        }
+                        renderAdminShopPage(); // 클릭 즉시 테두리 업데이트 반영
                     }
                 };
                 listDiv.appendChild(itemDiv);
             });
         }
 
-        // [수정] 타입(name, price)에 따라 분리하여 수정창 띄우기
         function enableEditMode(event, index, type) {
             event.stopPropagation();
             document.getElementById(`view-${type}-mode-${index}`).style.display = 'none';
-            
             const editMode = document.getElementById(`edit-${type}-mode-${index}`);
             editMode.style.display = 'flex';
-            
-            const inputField = document.getElementById(`${type}-input-${index}`);
-            inputField.focus(); 
+            document.getElementById(`${type}-input-${index}`).focus(); 
         }
 
         function saveSingleData(event, avatarId, index, type) {
@@ -412,15 +428,9 @@
             }
         }
 
+        // [수정] 조용히 판매 항목(tempShopItems)을 서버에 저장하고 관리자 메뉴로 이동
         function saveShopItems() {
-            let selectedItems = [];
-            ALL_SHOP_AVATARS.forEach((avatarId, index) => {
-                const cb = document.getElementById(`shop-cb-${index}`);
-                if (cb && cb.checked) selectedItems.push(avatarId);
-            });
-            
-            db.ref('shopItems').set(selectedItems);
-            alert('체크한 항목들이 상점에 등록되었습니다!');
+            db.ref('shopItems').set(tempShopItems);
             showPage('admin-menu-page');
         }
 
@@ -549,6 +559,7 @@
 
         // === 보관함 기능 ===
         function showStoragePage() { 
+            tempSelectedAvatar = myCurrentAvatar; 
             renderAvatarList(); 
             showPage('storage-page'); 
         }
@@ -562,9 +573,15 @@
             myOwnedAvatars.forEach(avatarId => {
                 const avatarDiv = document.createElement('div');
                 avatarDiv.className = 'avatar-item';
-                if (avatarId === myCurrentAvatar) avatarDiv.classList.add('selected');
                 
-                avatarDiv.onclick = () => changeAvatar(avatarId);
+                if (avatarId === tempSelectedAvatar) {
+                    avatarDiv.classList.add('selected');
+                }
+                
+                avatarDiv.onclick = () => {
+                    tempSelectedAvatar = avatarId;
+                    renderAvatarList(); 
+                };
                 
                 let avatarName = '';
                 if(avatarId === 'image_0.png') avatarName = '기본 남자';
@@ -581,12 +598,14 @@
             });
         }
 
-        function changeAvatar(newAvatarId) {
-            myCurrentAvatar = newAvatarId;
-            db.ref('studentAccounts/' + currentUser).update({ avatarId: newAvatarId });
-            db.ref('onlineUsers/' + currentUser).update({ avatarId: newAvatarId });
-            renderAvatarList();
-            alert('아바타가 성공적으로 변경되었습니다!');
+        function applySelectedAvatar() {
+            if (!tempSelectedAvatar) return;
+            
+            myCurrentAvatar = tempSelectedAvatar;
+            db.ref('studentAccounts/' + currentUser).update({ avatarId: tempSelectedAvatar });
+            db.ref('onlineUsers/' + currentUser).update({ avatarId: tempSelectedAvatar });
+            
+            showPage('student-lobby-page');
         }
     </script>
 </body>
