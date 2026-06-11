@@ -275,22 +275,29 @@
         db.ref('chatLog').on('child_added', (snapshot) => {
             const data = snapshot.val();
             const logDiv = document.getElementById('chat-log');
-            const displayName = data.senderName || data.sender;
             
-            // 본인이거나 상티(관리자)면 파란색
-            const isMe = data.sender === currentUser;
-            let nameColor = '#333';
-            if (isMe || data.sender === '⭐상티' || displayName === '⭐상티') {
-                nameColor = '#007bff';
-            }
-            
-            // 빨간색 알림 메시지 처리
-            let messageContent = data.message;
+            // 시스템 안내문(빨간 굵은 글씨) 렌더링 - 이름(발신자) 없음
             if (data.isAlert) {
-                messageContent = `<span style="color: #dc3545; font-weight: bold;">${data.message}</span>`;
+                logDiv.innerHTML += `<div style="margin-bottom: 5px; color: #dc3545; font-weight: bold; text-align: center; background: #ffeeba; padding: 4px; border-radius: 8px;">📢 ${data.message}</div>`;
+            } else {
+                // 일반 채팅 렌더링
+                const displayName = data.senderName || data.sender;
+                const isMe = data.sender === currentUser;
+                
+                let nameColor = '#333';
+                let msgColor = '#333';
+                
+                // 관리자(상티)의 경우 이름과 메시지 모두 파란색
+                if (data.sender === '⭐상티' || displayName === '⭐상티') {
+                    nameColor = '#007bff';
+                    msgColor = '#007bff';
+                } else if (isMe) {
+                    nameColor = '#007bff';
+                }
+                
+                logDiv.innerHTML += `<div style="margin-bottom: 5px;"><strong style="color:${nameColor}">${displayName}:</strong> <span style="color:${msgColor}">${data.message}</span></div>`;
             }
-
-            logDiv.innerHTML += `<div style="margin-bottom: 5px;"><strong style="color:${nameColor}">${displayName}:</strong> ${messageContent}</div>`;
+            
             logDiv.scrollTop = logDiv.scrollHeight;
         });
 
@@ -712,8 +719,7 @@
 
             const sysMsg = newState ? "상티가 채팅창을 비활성화했습니다" : "상티가 채팅창을 활성화했습니다";
             db.ref('chatLog').push().set({ 
-                sender: '⭐상티', 
-                senderName: '⭐상티',
+                sender: 'system', // 상티가 아닌 시스템 발송으로 처리
                 message: sysMsg, 
                 isAlert: true,
                 timestamp: firebase.database.ServerValue.TIMESTAMP 
