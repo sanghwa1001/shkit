@@ -72,7 +72,7 @@
         .owned-tag { font-size: 16px; color: #fff; background: #888; border-radius: 8px; padding: 6px 12px; margin-top: 10px; }
         .gem-display { font-size: 24px; color: #d84315; background: #ffcc80; padding: 12px 25px; border-radius: 25px; display: inline-block; margin-bottom: 20px; border: 3px solid #ffb74d; box-shadow: 0 4px 0 #ff9800;}
 
-        /* 🔥 하이파이브 게임 전용 스타일 */
+        /* 🔥 하이파이브 게임 전용 스타일 (렉 방지를 위해 transition 최소화) */
         .hand-container { position: absolute; display: flex; flex-direction: column; align-items: center; user-select: none; transform: translate(-50%, -50%); z-index: 5; }
         .emoji { font-size: 35px; line-height: 1; transition: font-size 0.2s; }
         .hf-label { margin-top: 5px; font-size: 12px; font-weight: bold; background-color: #333; color: #fff; padding: 4px 8px; border-radius: 12px; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: all 0.1s; }
@@ -416,7 +416,6 @@
             // 2. 대기실에 있을 때 실시간 목록 및 렌더링
             if (currentUser && document.getElementById('highfive-waiting-page').classList.contains('active')) {
                 if (hfStatus === 'playing') {
-                    // 참가자(혹은 관리자)만 게임 화면으로 자동 이동, 재접속자는 대기실 유지
                     if (localHfUsers[currentUser] || isAdmin) {
                         initLocalPhysics();
                         showPage('highfive-game-page');
@@ -446,8 +445,7 @@
                             hfPhysicsData[uid] = {
                                 angle: u.angle !== undefined ? u.angle : Math.random() * Math.PI * 2,
                                 currentSpeed: u.currentSpeed || 0,
-                                hasMerged: false,
-                                lastDbAngle: u.angle // 🔥 렉(튕김) 방지용 최신 각도 기억 변수
+                                hasMerged: false
                             };
                             const layer = document.getElementById('hf-hands-layer');
                             const el = document.createElement('div');
@@ -458,19 +456,11 @@
                         }
 
                         // 🔥 [렉 해결 핵심] 
-                        // 관리자가 새 위치를 보냈을 때(lastDbAngle이 달라졌을 때)만 화면을 보정합니다.
-                        // 이 코드가 있어야 '짝' 버튼을 연타해도 손바닥이 과거 위치로 튕기지 않습니다.
-                        if (!isAdmin && !u.matched && u.angle !== undefined && hfPhysicsData[uid]) {
-                            if (hfPhysicsData[uid].lastDbAngle !== u.angle) {
-                                hfPhysicsData[uid].lastDbAngle = u.angle;
-                                let diff = Math.abs(normalizeAngle(hfPhysicsData[uid].angle) - normalizeAngle(u.angle));
-                                diff = Math.min(diff, Math.PI * 2 - diff);
-                                // 오차가 클 때만 동기화 보정
-                                if (diff > 0.2) { 
-                                    hfPhysicsData[uid].angle = u.angle;
-                                    hfPhysicsData[uid].currentSpeed = u.currentSpeed;
-                                }
-                            }
+                        // 지속적인 각도 강제 보정을 삭제하여 순간이동(텔레포트) 현상 방지. 
+                        // 목표 속도와 방향만 업데이트하면 브라우저들이 매끄럽게 동일한 궤적을 그림.
+                        if (hfPhysicsData[uid]) {
+                            hfPhysicsData[uid].targetSpeed = u.targetSpeed;
+                            hfPhysicsData[uid].direction = u.direction;
                         }
 
                         // 매칭 완료 렌더링
@@ -676,15 +666,13 @@
                 let speedUpdates = {};
                 Object.keys(localHfUsers).forEach(uid => {
                     if (!localHfUsers[uid].matched && hfPhysicsData[uid]) {
+                         // 🔥 연속적인 절대각도 전송(렉의 원인)을 제거하고, 목표 속도와 방향만 넘깁니다.
                          speedUpdates['highFive/users/' + uid + '/targetSpeed'] = Math.random() * 0.05 + 0.01;
                          if (Math.random() > 0.6) speedUpdates['highFive/users/' + uid + '/direction'] = localHfUsers[uid].direction * -1;
-                         
-                         speedUpdates['highFive/users/' + uid + '/angle'] = hfPhysicsData[uid].angle;
-                         speedUpdates['highFive/users/' + uid + '/currentSpeed'] = hfPhysicsData[uid].currentSpeed;
                     }
                 });
                 db.ref().update(speedUpdates);
-            }, 1000); 
+            }, 1500); 
         }
 
         function initLocalPhysics() {
@@ -699,9 +687,10 @@
                 const u = localHfUsers[uid];
                 hfPhysicsData[uid] = {
                     angle: u.angle !== undefined ? u.angle : Math.random() * Math.PI * 2,
+                    targetSpeed: u.targetSpeed || 0,
+                    direction: u.direction || 1,
                     currentSpeed: u.currentSpeed || 0,
-                    hasMerged: false,
-                    lastDbAngle: u.angle
+                    hasMerged: false
                 };
 
                 const el = document.createElement('div');
@@ -738,8 +727,9 @@
                 const phys = hfPhysicsData[uid];
                 if (dbUser.matched) return;
 
-                phys.currentSpeed += (dbUser.targetSpeed - phys.currentSpeed) * 0.05;
-                phys.angle += phys.currentSpeed * dbUser.direction;
+                // 서버에서 내려온 목표속도로 부드럽게 연산 (모든 브라우저가 동일 연산 수행)
+                phys.currentSpeed += ((phys.targetSpeed || 0) - phys.currentSpeed) * 0.05;
+                phys.angle += phys.currentSpeed * (phys.direction || 1);
 
                 const x = HF_CENTER + HF_RADIUS * Math.cos(phys.angle);
                 const y = HF_CENTER + HF_RADIUS * Math.sin(phys.angle);
@@ -780,7 +770,8 @@
                             let diff = Math.abs(a1 - a2);
                             diff = Math.min(diff, Math.PI * 2 - diff);
 
-                            if (diff < 0.18) {
+                            // 🔥 판정 범위를 0.4로 넓혀서 타격감 있게 보정 (지연시간 극복)
+                            if (diff < 0.4) {
                                 db.ref('highFive/users/' + id1).update({ matched: true, matchedWith: id2 });
                                 db.ref('highFive/users/' + id2).update({ matched: true, matchedWith: id1 });
                             }
@@ -801,7 +792,7 @@
             setTimeout(() => {
                 db.ref('highFive/users/' + currentUser).update({ isClapping: false });
                 btn.classList.remove('active-clap');
-            }, 400); 
+            }, 600); // 🔥 입력 판정 유지시간 0.6초로 넉넉하게
         }
 
         function renderMatchResult(id1, id2) {
@@ -1244,7 +1235,7 @@
                 
                 let hfStatusText = '';
                 if (localHfUsers[id] && hfStatus !== 'closed') {
-                    hfStatusText = `<br><span style="font-size:12px; color:#e83e8c; font-weight:bold;">✋하이파이브 대기중</span>`;
+                    hfStatusText = `<br><span style="font-size:12px; color:#e83e8c; font-weight:bold;">✋대기중</span>`;
                 }
 
                 userDiv.innerHTML = `${requestBadge}${bubbleHTML}<img src="${user.avatarId}" alt="아바타" class="online-user-avatar"><span style="font-weight:bold; text-align:center;">${displayId} ${isMe}${hfStatusText}</span>`;
