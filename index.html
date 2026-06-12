@@ -139,8 +139,10 @@
         <div id="student-manage-page" class="page">
             <h2>학생 목록</h2>
             <div id="student-list" class="list-container"></div>
-            <button class="delete-btn" onclick="deleteAllAccounts()">전체 삭제</button>
-            <button class="secondary-btn" onclick="closeManagePage()">이전으로</button>
+            <div style="display:flex; gap:10px;">
+                <button class="delete-btn" onclick="deleteAllAccounts()">전체 삭제</button>
+                <button class="secondary-btn" onclick="closeManagePage()">이전으로</button>
+            </div>
         </div>
 
         <div id="admin-shop-page" class="page">
