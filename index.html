@@ -15,6 +15,23 @@
         body { font-family: 'Jua', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: linear-gradient(135deg, #74ebd5 0%, #9face6 100%); }
         .container { background-color: #ffffff; padding: 40px; border: 5px solid #333; border-radius: 25px; box-shadow: 0 12px 0 rgba(0,0,0,0.2); text-align: center; width: 95%; max-width: 1000px; box-sizing: border-box; }
         h2 { color: #333; margin-top: 0; margin-bottom: 25px; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); font-size: 36px; }
+        
+        /* ⭐ 로고 스타일 추가 */
+        .game-logo {
+            width: 250px;
+            height: auto;
+            margin-bottom: 20px;
+            filter: drop-shadow(0 5px 10px rgba(0,0,0,0.2));
+            animation: floating 3s ease-in-out infinite;
+        }
+
+        /* 둥둥 떠있는 애니메이션 */
+        @keyframes floating {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateY(0px); }
+        }
+
         input.login-input { max-width: 350px; margin-left: auto; margin-right: auto; display: block; }
         .login-btn-group { max-width: 350px; margin: 0 auto; }
         button { font-family: 'Jua', sans-serif; width: 100%; padding: 15px 10px; margin: 10px 0; border: 3px solid #0056b3; border-radius: 15px; background-color: #007bff; color: white; font-size: 20px; cursor: pointer; box-shadow: 0 6px 0 #004494; transition: all 0.1s ease; letter-spacing: 1px; white-space: nowrap; overflow: hidden; }
@@ -77,7 +94,8 @@
 
     <div class="container">
         <div id="main-page" class="page active">
-            <h2>🎮 로그인 화면</h2>
+            <img src="https://img.freepik.com/free-vector/modern-creative-pixel-game-logo-vector-gaming-icon-concept_126523-631.jpg" alt="Avatar World Logo" class="game-logo">
+            <h2>🎮 아바타 월드</h2>
             <div class="login-btn-group">
                 <button onclick="showPage('student-page')">학생 로그인</button>
                 <button class="secondary-btn" onclick="showPage('admin-login-page')">관리자 로그인</button>
@@ -713,7 +731,6 @@
             showPage('student-lobby-page');
         }
 
-        // ⭐ 수정된 부분: 관리자가 로비 입장 시 현재 음소거 상태(isChatMuted)에 맞춰 버튼을 동기화합니다.
         function enterAdminLobby() {
             isAdmin = true;
             currentUser = '⭐상티';
@@ -741,7 +758,6 @@
             document.getElementById('chat-send-btn').style.borderColor = "";
             document.getElementById('chat-send-btn').style.boxShadow = "";
 
-            // 💡 [핵심 추가 코드] 입장할 때 DB의 isChatMuted 값을 확인해서 음소거 버튼 스타일을 맞춰줍니다.
             const muteBtn = document.getElementById('admin-mute-btn');
             if (isChatMuted) {
                 muteBtn.innerText = "음소거 해제";
@@ -1032,7 +1048,6 @@
                     };
                 }
 
-                // 조르기 요청 알림 배지에 카운트다운(시간) 렌더링을 위한 ID 부여
                 let requestBadge = '';
                 if (!isAdmin && currentUser) {
                     const reqFromThisUser = pendingRequests.find(req => req.from === id);
