@@ -166,9 +166,9 @@
         <div id="student-manage-page" class="page">
             <h2>학생 목록</h2>
             <div id="student-list" class="list-container"></div>
-            <div style="display:flex; gap:10px;">
-                <button class="delete-btn" onclick="deleteAllAccounts()">전체 삭제</button>
-                <button class="secondary-btn" onclick="closeManagePage()">이전으로</button>
+            <div class="login-btn-group" style="display: flex; gap: 10px;">
+                <button class="delete-btn" onclick="deleteAllAccounts()" style="margin: 0; flex: 1;">전체 삭제</button>
+                <button class="secondary-btn" onclick="closeManagePage()" style="margin: 0; flex: 1;">이전으로</button>
             </div>
         </div>
 
@@ -176,9 +176,9 @@
             <h2>상점 관리</h2>
             <p style="font-size: 18px; color: #666; margin-bottom: 15px;">✏️이름 / 💎가격을 수정하고 판매할 아바타를 클릭하세요!</p>
             <div id="admin-shop-list" class="avatar-list-container"></div>
-            <div style="display:flex; gap:10px;">
-                <button class="bulk-btn" onclick="saveShopItems()">판매하기</button>
-                <button class="secondary-btn" onclick="closeAdminShopPage()">이전으로</button>
+            <div class="login-btn-group" style="display: flex; gap: 10px;">
+                <button class="bulk-btn" onclick="saveShopItems()" style="margin: 0; flex: 1;">판매하기</button>
+                <button class="secondary-btn" onclick="closeAdminShopPage()" style="margin: 0; flex: 1;">이전으로</button>
             </div>
         </div>
 
@@ -237,15 +237,19 @@
             <h2>💎 아바타 상점</h2>
             <div id="my-gems-display" class="gem-display">내 보석: 💎 0</div>
             <div id="student-shop-list" class="avatar-list-container"></div>
-            <button class="secondary-btn" onclick="showPage('student-lobby-page')">이전으로</button>
+            <div class="login-btn-group">
+                <button class="secondary-btn" onclick="showPage('student-lobby-page')">이전으로</button>
+            </div>
         </div>
 
         <div id="storage-page" class="page">
             <h2>🎒 아바타 보관함</h2>
             <p style="font-size: 18px; color: #555;">장착할 아바타 고르기!</p>
             <div id="avatar-list" class="avatar-list-container"></div>
-            <button class="bulk-btn" onclick="applySelectedAvatar()">장착하기</button>
-            <button class="secondary-btn" onclick="showPage('student-lobby-page')">이전으로</button>
+            <div class="login-btn-group" style="display: flex; gap: 10px;">
+                <button class="bulk-btn" onclick="applySelectedAvatar()" style="margin: 0; flex: 1;">장착하기</button>
+                <button class="secondary-btn" onclick="showPage('student-lobby-page')" style="margin: 0; flex: 1;">이전으로</button>
+            </div>
         </div>
 
         <div id="highfive-page" class="page">
@@ -341,7 +345,8 @@
         });
 
         db.ref('shopItems').on('value', (snapshot) => {
-            localShopItems = snapshot.val() || [];
+            let items = snapshot.val() || [];
+            localShopItems = items.map(id => id.replace('.png', '.gif')); // 과거 png 기록이 있다면 gif로 덮어씌움
             if (document.getElementById('admin-shop-page').classList.contains('active')) renderAdminShopPage();
             if (document.getElementById('student-shop-page').classList.contains('active')) renderStudentShop();
         });
@@ -554,6 +559,49 @@
             renderOnlineUsers();
         }
 
+        function checkStudentLogin() {
+            const inputId = document.getElementById('student-id').value.trim();
+            const inputPw = document.getElementById('student-pw').value.trim();
+            const account = localStudentAccounts[inputId];
+
+            if (account && account.pw === inputPw) {
+                currentUser = inputId;
+                isAdmin = false;
+                
+                // 💡 [핵심 수정] 과거 png 데이터를 gif로 자동 변환 및 DB 업데이트
+                let fixedOwned = account.ownedAvatars || DEFAULT_AVATARS;
+                let fixedAvatar = account.avatarId || DEFAULT_AVATARS[0];
+                let needsUpdate = false;
+
+                if (fixedOwned.some(a => a.includes('.png'))) {
+                    fixedOwned = fixedOwned.map(a => a.replace('.png', '.gif'));
+                    needsUpdate = true;
+                }
+                if (fixedAvatar.includes('.png')) {
+                    fixedAvatar = fixedAvatar.replace('.png', '.gif');
+                    needsUpdate = true;
+                }
+
+                myCurrentAvatar = fixedAvatar;
+                
+                let updates = {};
+                if (needsUpdate) {
+                    updates.ownedAvatars = fixedOwned;
+                    updates.avatarId = fixedAvatar;
+                }
+                if (account.gems === undefined) updates.gems = 10;
+                
+                if (Object.keys(updates).length > 0) {
+                    db.ref('studentAccounts/' + currentUser).update(updates);
+                }
+                
+                document.getElementById('student-nickname').value = account.nickname || inputId;
+                showPage('nickname-page');
+            } else {
+                alert('아이디 또는 비밀번호가 틀렸습니다.');
+            }
+        }
+
         function checkAdminLogin() {
             const inputId = document.getElementById('admin-id').value.trim();
             const inputPw = document.getElementById('admin-pw').value.trim();
@@ -677,9 +725,11 @@
                 itemDiv.className = 'avatar-item';
                 if (tempShopItems.includes(avatarId)) itemDiv.classList.add('selected');
 
-                const dbKey = avatarId.replace('.', '_');
-                const currentName = localShopNames[dbKey] || `아바타 ${index + 1}`;
-                const currentPrice = localShopPrices[dbKey] !== undefined ? localShopPrices[dbKey] : 1;
+                const dbKey = avatarId.replace('.', '_'); 
+                const fallbackKey = avatarId.split('.')[0] + '_png'; // 이전 png 기록 호환용
+                
+                const currentName = localShopNames[dbKey] || localShopNames[fallbackKey] || `아바타 ${index + 1}`;
+                const currentPrice = localShopPrices[dbKey] !== undefined ? localShopPrices[dbKey] : (localShopPrices[fallbackKey] !== undefined ? localShopPrices[fallbackKey] : 1);
                 
                 itemDiv.innerHTML = `
                     <img src="${avatarId}" alt="아바타">
@@ -751,25 +801,6 @@
         function saveShopItems() { 
             db.ref('shopItems').set(tempShopItems); 
             showPage(adminShopReturnPage); 
-        }
-
-        function checkStudentLogin() {
-            const inputId = document.getElementById('student-id').value.trim();
-            const inputPw = document.getElementById('student-pw').value.trim();
-            const account = localStudentAccounts[inputId];
-
-            if (account && account.pw === inputPw) {
-                currentUser = inputId;
-                isAdmin = false;
-                myCurrentAvatar = account.avatarId || DEFAULT_AVATARS[0];
-                if (!account.ownedAvatars) db.ref('studentAccounts/' + currentUser).update({ ownedAvatars: DEFAULT_AVATARS });
-                if (account.gems === undefined) db.ref('studentAccounts/' + currentUser).update({ gems: 10 });
-                
-                document.getElementById('student-nickname').value = account.nickname || inputId;
-                showPage('nickname-page');
-            } else {
-                alert('아이디 또는 비밀번호가 틀렸습니다.');
-            }
         }
         
         function enterLobbyWithNickname() {
@@ -1171,7 +1202,8 @@
                 
                 const isMe = (id === currentUser) ? '<span style="color: #ff9800; font-size:14px;"><br>(나)</span>' : '';
                 
-                userDiv.innerHTML = `${requestBadge}${bubbleHTML}<img src="${user.avatarId}" alt="아바타" class="online-user-avatar"><span style="font-weight:bold; text-align:center;">${displayId} ${isMe}</span>`;
+                let avatarSrc = (user.avatarId || 'image_0.gif').replace('.png', '.gif');
+                userDiv.innerHTML = `${requestBadge}${bubbleHTML}<img src="${avatarSrc}" alt="아바타" class="online-user-avatar"><span style="font-weight:bold; text-align:center;">${displayId} ${isMe}</span>`;
                 listDiv.appendChild(userDiv);
             });
         }
@@ -1188,8 +1220,10 @@
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'avatar-item';
                 const dbKey = avatarId.replace('.', '_');
-                const avatarName = localShopNames[dbKey] || `${avatarId.split('.')[0]}번 아바타`;
-                const avatarPrice = localShopPrices[dbKey] !== undefined ? localShopPrices[dbKey] : 1;
+                const fallbackKey = avatarId.split('.')[0] + '_png';
+                
+                const avatarName = localShopNames[dbKey] || localShopNames[fallbackKey] || `${avatarId.split('.')[0]}번 아바타`;
+                const avatarPrice = localShopPrices[dbKey] !== undefined ? localShopPrices[dbKey] : (localShopPrices[fallbackKey] !== undefined ? localShopPrices[fallbackKey] : 1);
                 const nameText = `<span style="font-size: 18px; color: #333; margin-top: 8px;">${avatarName}</span>`;
                 if (myOwnedAvatars.includes(avatarId)) {
                     itemDiv.innerHTML = `<img src="${avatarId}" alt="아바타" style="opacity: 0.5;">${nameText}<div class="owned-tag">보유 중</div>`;
@@ -1202,7 +1236,9 @@
 
         function buyAvatar(avatarId) {
             const dbKey = avatarId.replace('.', '_');
-            const price = localShopPrices[dbKey] !== undefined ? localShopPrices[dbKey] : 1;
+            const fallbackKey = avatarId.split('.')[0] + '_png';
+            const price = localShopPrices[dbKey] !== undefined ? localShopPrices[dbKey] : (localShopPrices[fallbackKey] !== undefined ? localShopPrices[fallbackKey] : 1);
+            
             let myOwnedAvatars = localStudentAccounts[currentUser]?.ownedAvatars || DEFAULT_AVATARS;
             let myGems = localStudentAccounts[currentUser]?.gems || 0;
             if (myOwnedAvatars.includes(avatarId)) return alert('이미 보유한 아바타입니다.');
@@ -1230,8 +1266,12 @@
                     avatarDiv.classList.add('selected');
                 };
 
-                let avatarName = (avatarId === 'image_0.gif') ? '기본 남자' : (avatarId === 'image_1.gif') ? '기본 여자' : (localShopNames[avatarId.replace('.', '_')] || `${avatarId.split('.')[0]}번 아바타`);
-                avatarDiv.innerHTML = `<img src="${avatarId}" alt="아바타"><p style="font-size: 18px; color: #333; margin-top: 15px;">${avatarName}</p>`;
+                const dbKey = avatarId.replace('.', '_');
+                const fallbackKey = avatarId.split('.')[0] + '_png';
+                let avatarName = (avatarId === 'image_0.gif' || avatarId === 'image_0.png') ? '기본 남자' : (avatarId === 'image_1.gif' || avatarId === 'image_1.png') ? '기본 여자' : (localShopNames[dbKey] || localShopNames[fallbackKey] || `${avatarId.split('.')[0]}번 아바타`);
+                
+                let avatarSrc = avatarId.replace('.png', '.gif');
+                avatarDiv.innerHTML = `<img src="${avatarSrc}" alt="아바타"><p style="font-size: 18px; color: #333; margin-top: 15px;">${avatarName}</p>`;
                 listDiv.appendChild(avatarDiv);
             });
         }
@@ -1426,13 +1466,13 @@
                 const isOffline = data.isOnline === false;
                 const isFailedUser = isFailureState && !userIsPaired && !isOffline;
                 
-                let avatarSrc = realAcc.avatarId || 'image_0.gif';
+                let avatarSrc = (realAcc.avatarId || 'image_0.gif').replace('.png', '.gif');
                 let displayName = realAcc.nickname || id;
                 let statusTextHtml = '';
                 
                 if (hfState.isStarted && !userIsPaired) {
                     if (isFailedUser) {
-                        avatarSrc = realAcc.avatarId || 'image_0.gif';
+                        avatarSrc = (realAcc.avatarId || 'image_0.gif').replace('.png', '.gif');
                         displayName = realAcc.nickname || id;
                     } else {
                         avatarSrc = 'unknown.gif'; 
