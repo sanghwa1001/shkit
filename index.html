@@ -404,7 +404,7 @@
             hfStatus = data.status;
             localHfUsers = data.users || {};
 
-            // 1. 상태 변경에 따른 페이지 강제 이동
+            // 1. 상태 변경에 따른 로비 -> 대기실 이동
             if (currentUser && document.getElementById('student-lobby-page').classList.contains('active')) {
                 if (hfStatus === 'forced' || (hfStatus === 'waiting' && localHfUsers[currentUser])) {
                     if (!isAdmin) db.ref('highFive/users/' + currentUser).onDisconnect().remove();
@@ -413,10 +413,9 @@
                 }
             }
 
-            // 2. 대기실에 있을 때 실시간 목록 업데이트
+            // 2. 대기실에 있을 때 실시간 목록 및 렌더링
             if (currentUser && document.getElementById('highfive-waiting-page').classList.contains('active')) {
                 if (hfStatus === 'playing') {
-                    // 참가자(혹은 관리자)만 게임 화면으로 자동 이동, 재접속자는 대기실 유지
                     if (localHfUsers[currentUser] || isAdmin) {
                         initLocalPhysics();
                         showPage('highfive-game-page');
@@ -432,18 +431,20 @@
                 }
             }
 
-            // 3. 게임 중 매칭 렌더링 & 재접속/퇴장 감지
+            // 3. 게임 중 동기화 및 렌더링
             if (currentUser && document.getElementById('highfive-game-page').classList.contains('active')) {
                 if (hfStatus === 'closed') {
                     cancelAnimationFrame(hfAnimationId);
                     showPage('student-lobby-page');
                 } else if (hfStatus === 'playing') {
-                    // 재접속한 새로운 유저가 있으면 캔버스에 추가 생성
                     Object.keys(localHfUsers).forEach(uid => {
+                        let u = localHfUsers[uid];
+                        
+                        // 새 재접속자/추가된 인원이 있으면 캔버스에 생성
                         if (!hfPhysicsData[uid]) {
                             hfPhysicsData[uid] = {
-                                angle: Math.random() * Math.PI * 2,
-                                currentSpeed: 0,
+                                angle: u.angle !== undefined ? u.angle : Math.random() * Math.PI * 2,
+                                currentSpeed: u.currentSpeed || 0,
                                 hasMerged: false
                             };
                             const layer = document.getElementById('hf-hands-layer');
@@ -453,8 +454,18 @@
                             el.innerHTML = `<div class="emoji">✋</div><div class="hf-label">${localHfUsers[uid].nickname}</div>`;
                             layer.appendChild(el);
                         }
-                        
-                        let u = localHfUsers[uid];
+
+                        // 🔥 [동기화] 학생 화면에서는 관리자가 보내주는 angle과 비교하여 오차가 나면 강제로 각도를 맞춰 똑같이 보이게 함
+                        if (!isAdmin && !u.matched && u.angle !== undefined && hfPhysicsData[uid]) {
+                            let diff = Math.abs(normalizeAngle(hfPhysicsData[uid].angle) - normalizeAngle(u.angle));
+                            diff = Math.min(diff, Math.PI * 2 - diff);
+                            if (diff > 0.15) { 
+                                hfPhysicsData[uid].angle = u.angle;
+                                hfPhysicsData[uid].currentSpeed = u.currentSpeed;
+                            }
+                        }
+
+                        // 매칭 완료 렌더링
                         if (u.matched && hfPhysicsData[uid] && !hfPhysicsData[uid].hasMerged) {
                             hfPhysicsData[uid].hasMerged = true;
                             renderMatchResult(uid, u.matchedWith);
@@ -462,13 +473,17 @@
                     });
                 }
             }
+            
+            // 메인 로비에 있는 사람들을 위한 알림 렌더링
+            if (currentUser && document.getElementById('student-lobby-page').classList.contains('active')) {
+                renderOnlineUsers(); 
+            }
         });
 
         // ------------------------- 하이파이브 로직 -------------------------
 
         function enterHighFiveLobbyVoluntary() {
             if (hfStatus === 'playing') {
-                // 게임 중이면 DB에 바로 추가하지 않고 대기실만 보여줌 (재접속 대기)
                 showPage('highfive-waiting-page');
                 renderHfWaitingUI();
                 return;
@@ -614,7 +629,9 @@
                 targetSpeed: Math.random() * 0.04 + 0.01,
                 direction: Math.random() > 0.5 ? 1 : -1,
                 matched: false,
-                isClapping: false
+                isClapping: false,
+                angle: Math.random() * Math.PI * 2,
+                currentSpeed: 0
             });
             ref.onDisconnect().remove();
         }
@@ -640,6 +657,9 @@
                 updates['highFive/users/' + uid + '/direction'] = Math.random() > 0.5 ? 1 : -1;
                 updates['highFive/users/' + uid + '/matched'] = false;
                 updates['highFive/users/' + uid + '/isClapping'] = false;
+                // 시작 시 모두에게 절대적인 초기 각도를 부여하여 동기화의 기준점으로 삼음
+                updates['highFive/users/' + uid + '/angle'] = Math.random() * Math.PI * 2;
+                updates['highFive/users/' + uid + '/currentSpeed'] = 0;
             });
             updates['highFive/status'] = 'playing';
             db.ref().update(updates);
@@ -648,13 +668,17 @@
             hfSpeedChangerId = setInterval(() => {
                 let speedUpdates = {};
                 Object.keys(localHfUsers).forEach(uid => {
-                    if (!localHfUsers[uid].matched) {
+                    if (!localHfUsers[uid].matched && hfPhysicsData[uid]) {
                          speedUpdates['highFive/users/' + uid + '/targetSpeed'] = Math.random() * 0.05 + 0.01;
                          if (Math.random() > 0.6) speedUpdates['highFive/users/' + uid + '/direction'] = localHfUsers[uid].direction * -1;
+                         
+                         // 🔥 관리자 화면의 절대적인 위치값을 1초마다 지속적으로 데이터베이스에 뿌림
+                         speedUpdates['highFive/users/' + uid + '/angle'] = hfPhysicsData[uid].angle;
+                         speedUpdates['highFive/users/' + uid + '/currentSpeed'] = hfPhysicsData[uid].currentSpeed;
                     }
                 });
                 db.ref().update(speedUpdates);
-            }, 1500);
+            }, 1000); 
         }
 
         function initLocalPhysics() {
@@ -668,8 +692,8 @@
             Object.keys(localHfUsers).forEach(uid => {
                 const u = localHfUsers[uid];
                 hfPhysicsData[uid] = {
-                    angle: Math.random() * Math.PI * 2,
-                    currentSpeed: 0,
+                    angle: u.angle !== undefined ? u.angle : Math.random() * Math.PI * 2,
+                    currentSpeed: u.currentSpeed || 0,
                     hasMerged: false
                 };
 
@@ -695,8 +719,8 @@
         function animateHf() {
             if (hfStatus !== 'playing') return;
 
-            // 접속이 끊긴(DB에서 사라진) 유저의 캔버스 화면 정리
             Object.keys(hfPhysicsData).forEach(uid => {
+                // 접속이 끊겨 DB에서 제거된 유저의 캔버스 화면 정리
                 if (!localHfUsers[uid]) {
                     const el = document.getElementById('hf-hand-' + uid);
                     if (el) el.remove();
@@ -744,7 +768,6 @@
                     if (db1.matched || db2.matched) continue;
 
                     if (db1.isClapping && db2.isClapping) {
-                        // 관리자 화면의 물리 연산값을 기준으로 충돌 판정 (동기화)
                         if (hfPhysicsData[id1] && hfPhysicsData[id2]) {
                             const a1 = normalizeAngle(hfPhysicsData[id1].angle);
                             const a2 = normalizeAngle(hfPhysicsData[id2].angle);
@@ -1212,7 +1235,14 @@
                 }
                 let displayId = user.nickname || id; if (displayId.length > 8) displayId = displayId.substring(0,8) + '..';
                 const isMe = (id === currentUser) ? '<span style="color: #ff9800; font-size:14px;"><br>(나)</span>' : '';
-                userDiv.innerHTML = `${requestBadge}${bubbleHTML}<img src="${user.avatarId}" alt="아바타" class="online-user-avatar"><span style="font-weight:bold; text-align:center;">${displayId} ${isMe}</span>`;
+                
+                // 🔥 메인 로비 목록에 "하이파이브 대기중" 텍스트 표시 추가
+                let hfStatusText = '';
+                if (localHfUsers[id] && hfStatus !== 'closed') {
+                    hfStatusText = `<br><span style="font-size:12px; color:#e83e8c; font-weight:bold;">✋하이파이브 대기중</span>`;
+                }
+
+                userDiv.innerHTML = `${requestBadge}${bubbleHTML}<img src="${user.avatarId}" alt="아바타" class="online-user-avatar"><span style="font-weight:bold; text-align:center;">${displayId} ${isMe}${hfStatusText}</span>`;
                 listDiv.appendChild(userDiv);
             });
         }
