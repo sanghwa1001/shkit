@@ -291,8 +291,9 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        const DEFAULT_AVATARS = ['image_0.png', 'image_1.png'];
-        const ALL_SHOP_AVATARS = ['1.png', '2.png', '3.png', '4.png', '5.png', '6.png', '7.png', '8.png', '9.png', '10.png'];
+        // 💡 모든 아바타 기본 확장자를 .gif 로 변경
+        const DEFAULT_AVATARS = ['image_0.gif', 'image_1.gif'];
+        const ALL_SHOP_AVATARS = ['1.gif', '2.gif', '3.gif', '4.gif', '5.gif', '6.gif', '7.gif', '8.gif', '9.gif', '10.gif'];
         
         let currentUser = null;
         let myCurrentAvatar = null;
@@ -1229,7 +1230,7 @@
                     avatarDiv.classList.add('selected');
                 };
 
-                let avatarName = (avatarId === 'image_0.png') ? '기본 남자' : (avatarId === 'image_1.png') ? '기본 여자' : (localShopNames[avatarId.replace('.', '_')] || `${avatarId.split('.')[0]}번 아바타`);
+                let avatarName = (avatarId === 'image_0.gif') ? '기본 남자' : (avatarId === 'image_1.gif') ? '기본 여자' : (localShopNames[avatarId.replace('.', '_')] || `${avatarId.split('.')[0]}번 아바타`);
                 avatarDiv.innerHTML = `<img src="${avatarId}" alt="아바타"><p style="font-size: 18px; color: #333; margin-top: 15px;">${avatarName}</p>`;
                 listDiv.appendChild(avatarDiv);
             });
@@ -1425,16 +1426,16 @@
                 const isOffline = data.isOnline === false;
                 const isFailedUser = isFailureState && !userIsPaired && !isOffline;
                 
-                let avatarSrc = realAcc.avatarId || 'image_0.png';
+                let avatarSrc = realAcc.avatarId || 'image_0.gif';
                 let displayName = realAcc.nickname || id;
                 let statusTextHtml = '';
                 
                 if (hfState.isStarted && !userIsPaired) {
                     if (isFailedUser) {
-                        avatarSrc = realAcc.avatarId || 'image_0.png';
+                        avatarSrc = realAcc.avatarId || 'image_0.gif';
                         displayName = realAcc.nickname || id;
                     } else {
-                        avatarSrc = 'unknown.png'; 
+                        avatarSrc = 'unknown.gif'; 
                         displayName = '???';
                     }
                 } 
