@@ -73,7 +73,20 @@
         .gem-display { font-size: 24px; color: #d84315; background: #ffcc80; padding: 12px 25px; border-radius: 25px; display: inline-block; margin-bottom: 20px; border: 3px solid #ffb74d; box-shadow: 0 4px 0 #ff9800;}
 
         /* 하이파이브 미니게임 전용 CSS */
-        .hf-ready-text { font-size: 14px; font-weight: bold; color: #888; margin-top: 5px; }
+        .hf-ready-text { 
+            font-size: 11px; 
+            letter-spacing: -0.5px;
+            font-weight: bold; 
+            color: #888; 
+            margin-top: 5px; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            width: 100%; 
+            box-sizing: border-box; 
+            padding: 0 2px;
+            text-align: center;
+        }
         .hf-ready-text.ready { color: #28a745; }
         @keyframes bounceBadge {
             0%, 100% { transform: translateY(0); }
@@ -242,7 +255,7 @@
                 <div class="online-users-header" style="border-bottom-color: #f48fb1;">
                     <div class="online-users-title" style="color: #d81b60;">대기실</div>
                     <div id="hf-controls" style="display: flex; align-items: center; gap: 6px;">
-                        <button id="hf-request-btn" onclick="sendHighFiveRequest()" disabled style="margin:0; padding: 6px 12px; font-size: 15px; background-color: #17a2b8; border-color:#117a8b; box-shadow: 0 4px 0 #0f6674; width: auto; opacity: 0.5;">✋ 하이?</button>
+                        <button id="hf-request-btn" onclick="sendHighFiveRequest()" disabled style="margin:0; padding: 6px 12px; font-size: 15px; background-color: #17a2b8; border-color:#117a8b; box-shadow: 0 4px 0 #0f6674; width: auto; opacity: 0.5;">하이?</button>
                         <button id="hf-accept-btn" onclick="acceptHighFive()" disabled style="margin:0; padding: 6px 12px; font-size: 15px; background-color: #ff9800; border-color:#e65100; box-shadow: 0 4px 0 #bf360c; width: auto; opacity: 0.5;">🤝 파이브!</button>
                     </div>
                 </div>
@@ -251,8 +264,11 @@
 
             <div class="login-btn-group" style="margin-top: 20px;">
                 <button id="hf-ready-btn" class="bulk-btn" onclick="toggleHfReady()">준비</button>
-                <button id="hf-admin-start-btn" class="bulk-btn" onclick="startHfGame()" style="display:none;">시작</button>
-                <button class="secondary-btn" onclick="exitHighFiveRoom()">나가기</button>
+                <div id="hf-admin-btn-group" style="display: none; gap: 10px;">
+                    <button id="hf-admin-start-btn" onclick="startHfGame()" style="margin: 0; flex: 1; background-color: #28a745; border-color: #1e7e34; box-shadow: 0 6px 0 #155724;">시작</button>
+                    <button class="secondary-btn" onclick="exitHighFiveRoom()" style="margin: 0; flex: 1;">나가기</button>
+                </div>
+                <button id="hf-student-exit-btn" class="secondary-btn" onclick="exitHighFiveRoom()">나가기</button>
             </div>
         </div>
 
@@ -295,7 +311,7 @@
 
         // --- [하이파이브 게임 전용 변수] ---
         let hfParticipants = {};
-        let hfState = { isStarted: false, pairCount: 0 };
+        let hfState = { isOpen: false, isStarted: false, pairCount: 0 };
         let hfRequests = {};
         let selectedHfUser = null;
         // 디자인 테마에 맞는 파스텔톤/부드러운 원색
@@ -333,13 +349,25 @@
 
         // --- [하이파이브 DB 리스너] ---
         db.ref('highfive/state').on('value', snap => {
-            hfState = snap.val() || { isStarted: false, pairCount: 0 };
+            const newState = snap.val() || { isOpen: false, isStarted: false, pairCount: 0 };
+            
+            // 관리자가 대기실을 종료했을 때 학생들을 로비로 돌려보내는 로직
+            if (!isAdmin && newState.isOpen === false) {
+                if (document.getElementById('highfive-page').classList.contains('active')) {
+                    alert('관리자가 하이파이브 게임을 종료하여 메인 로비로 이동합니다.');
+                    showPage('student-lobby-page');
+                }
+            }
+            
+            hfState = newState;
             if (document.getElementById('highfive-page').classList.contains('active')) renderHighFiveRoom();
         });
+
         db.ref('highfive/participants').on('value', snap => {
             hfParticipants = snap.val() || {};
             if (document.getElementById('highfive-page').classList.contains('active')) renderHighFiveRoom();
         });
+
         db.ref('highfive/requests').on('value', snap => {
             hfRequests = snap.val() || {};
             if (document.getElementById('highfive-page').classList.contains('active')) renderHighFiveRoom();
@@ -831,6 +859,7 @@
             if (currentUser && !isAdmin) {
                 db.ref('onlineUsers/' + currentUser).remove();
                 db.ref(`gemRequests/${currentUser}`).off(); 
+                db.ref('highfive/participants/' + currentUser).update({ isOnline: false });
             }
             currentUser = null;
             isAdmin = false;
@@ -1190,9 +1219,19 @@
 
         // --- [하이파이브 메인 함수] ---
         function enterHighFiveRoom() {
-            if (!isAdmin) {
-                db.ref('highfive/participants/' + currentUser).set({ status: 'waiting', pairId: null, pairColor: null });
-                db.ref('highfive/participants/' + currentUser).onDisconnect().remove();
+            if (isAdmin) {
+                db.ref('highfive/state/isOpen').set(true);
+            } else {
+                const pRef = db.ref('highfive/participants/' + currentUser);
+                pRef.once('value', snap => {
+                    const data = snap.val();
+                    if (!data) {
+                        pRef.set({ status: 'waiting', pairId: null, pairColor: null, isOnline: true });
+                    } else {
+                        pRef.update({ isOnline: true });
+                    }
+                    pRef.child('isOnline').onDisconnect().set(false);
+                });
             }
             selectedHfUser = null;
             showPage('highfive-page');
@@ -1200,12 +1239,17 @@
         }
 
         function exitHighFiveRoom() {
-            if (!isAdmin) {
-                db.ref('highfive/participants/' + currentUser).remove();
-                db.ref('highfive/participants/' + currentUser).onDisconnect().cancel();
-                db.ref('highfive/requests/' + currentUser).remove(); 
+            if (isAdmin) {
+                db.ref('highfive/state').update({ isOpen: false, isStarted: false, pairCount: 0 });
+                db.ref('highfive/participants').remove();
+                db.ref('highfive/requests').remove();
+                showPage('admin-menu-page');
+            } else {
+                const pRef = db.ref('highfive/participants/' + currentUser);
+                pRef.update({ isOnline: false });
+                pRef.child('isOnline').onDisconnect().cancel();
+                showPage('student-lobby-page');
             }
-            showPage('student-lobby-page');
         }
 
         function toggleHfReady() {
@@ -1220,22 +1264,51 @@
             db.ref('highfive/state').update({ isStarted: true, pairCount: 0 });
             db.ref('highfive/requests').remove();
         }
+        
+        function restartHfGame() {
+            db.ref('highfive/state').update({ isStarted: true, pairCount: 0 });
+            db.ref('highfive/requests').remove();
+            const updates = {};
+            for (let uid in hfParticipants) {
+                updates[`highfive/participants/${uid}/pairId`] = null;
+                updates[`highfive/participants/${uid}/pairColor`] = null;
+            }
+            db.ref().update(updates);
+        }
 
         function renderHighFiveRoom() {
+            const adminBtnGroup = document.getElementById('hf-admin-btn-group');
             const startBtn = document.getElementById('hf-admin-start-btn');
             const readyBtn = document.getElementById('hf-ready-btn');
+            const studentExitBtn = document.getElementById('hf-student-exit-btn');
             
             // 1. 하단 버튼 처리
             if (isAdmin) {
                 readyBtn.style.display = 'none';
-                startBtn.style.display = 'block';
+                studentExitBtn.style.display = 'none';
+                adminBtnGroup.style.display = 'flex';
                 
                 const studentIds = Object.keys(hfParticipants);
-                const allReady = studentIds.length >= 2 && studentIds.every(id => hfParticipants[id].status === 'ready');
-                startBtn.disabled = !allReady || hfState.isStarted;
-                startBtn.style.opacity = startBtn.disabled ? '0.5' : '1';
+                const onlineStudentIds = studentIds.filter(id => hfParticipants[id].isOnline !== false);
+                const unPairedCount = onlineStudentIds.filter(id => hfParticipants[id].pairId == null).length;
+                const isMatchComplete = onlineStudentIds.length >= 2 && unPairedCount <= 1;
+
+                if (hfState.isStarted && isMatchComplete) {
+                    startBtn.innerText = '다시하기';
+                    startBtn.disabled = false;
+                    startBtn.style.opacity = '1';
+                    startBtn.onclick = restartHfGame;
+                } else {
+                    startBtn.innerText = '시작';
+                    startBtn.onclick = startHfGame;
+                    const allReady = onlineStudentIds.length >= 2 && onlineStudentIds.every(id => hfParticipants[id].status === 'ready');
+                    startBtn.disabled = !allReady || hfState.isStarted;
+                    startBtn.style.opacity = startBtn.disabled ? '0.5' : '1';
+                }
             } else {
-                startBtn.style.display = 'none';
+                adminBtnGroup.style.display = 'none';
+                studentExitBtn.style.display = 'block';
+                
                 if (hfState.isStarted) {
                     readyBtn.style.display = 'none';
                 } else {
@@ -1262,7 +1335,7 @@
             const isPaired = myData?.pairId != null;
 
             if (hfState.isStarted && !isAdmin && !isPaired) {
-                reqBtn.disabled = !selectedHfUser || selectedHfUser === currentUser || hfParticipants[selectedHfUser]?.pairId != null;
+                reqBtn.disabled = !selectedHfUser || selectedHfUser === currentUser || hfParticipants[selectedHfUser]?.pairId != null || hfParticipants[selectedHfUser]?.isOnline === false;
                 reqBtn.style.opacity = reqBtn.disabled ? '0.5' : '1';
 
                 const myRequests = hfRequests[currentUser] || {};
@@ -1288,6 +1361,7 @@
                 const realAcc = localStudentAccounts[id] || {};
                 const isMe = id === currentUser;
                 const userIsPaired = data.pairId != null;
+                const isOffline = data.isOnline === false;
                 
                 let avatarSrc = realAcc.avatarId || 'image_0.png';
                 let displayName = realAcc.nickname || id;
@@ -1296,14 +1370,20 @@
                 if (hfState.isStarted && !userIsPaired) {
                     avatarSrc = 'unknown.png'; 
                     displayName = '???';
+                } 
+                
+                if (isOffline) {
+                    statusTextHtml = '<div class="hf-ready-text" style="color: #999;">나감</div>';
+                } else if (userIsPaired) {
+                    statusTextHtml = `<div class="hf-ready-text" style="color: ${data.pairColor};">하이파이브 완료!</div>`;
                 } else if (!hfState.isStarted) {
                     statusTextHtml = data.status === 'ready' ? '<div class="hf-ready-text ready">준비완료</div>' : '<div class="hf-ready-text">준비중</div>';
-                } else if (userIsPaired) {
-                    statusTextHtml = `<div class="hf-ready-text" style="color: ${data.pairColor}; margin-top: 5px;">하이파이브 완료!</div>`;
+                } else {
+                    statusTextHtml = '<div class="hf-ready-text">고르는중</div>';
                 }
 
                 let badgeHtml = '';
-                if (!isAdmin && hfState.isStarted && !isPaired) {
+                if (!isAdmin && hfState.isStarted && !isPaired && !isOffline) {
                     if (hfRequests[currentUser] && hfRequests[currentUser][id]) {
                         badgeHtml = '<div class="hf-badge">✋</div>';
                     }
@@ -1311,6 +1391,10 @@
 
                 const userDiv = document.createElement('div');
                 userDiv.className = 'online-user-item';
+                
+                if (isOffline) {
+                    userDiv.style.opacity = '0.5';
+                }
                 
                 if (userIsPaired && data.pairColor) {
                     userDiv.style.borderColor = data.pairColor;
@@ -1320,7 +1404,7 @@
                     userDiv.classList.add('selected');
                 }
 
-                if (!isAdmin && hfState.isStarted && !userIsPaired && id !== currentUser) {
+                if (!isAdmin && hfState.isStarted && !userIsPaired && id !== currentUser && !isOffline) {
                     userDiv.style.cursor = 'pointer';
                     userDiv.onclick = () => { selectedHfUser = id; renderHighFiveRoom(); };
                 }
