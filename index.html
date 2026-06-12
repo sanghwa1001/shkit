@@ -72,7 +72,7 @@
         .owned-tag { font-size: 16px; color: #fff; background: #888; border-radius: 8px; padding: 6px 12px; margin-top: 10px; }
         .gem-display { font-size: 24px; color: #d84315; background: #ffcc80; padding: 12px 25px; border-radius: 25px; display: inline-block; margin-bottom: 20px; border: 3px solid #ffb74d; box-shadow: 0 4px 0 #ff9800;}
 
-        /* 🔥 하이파이브 게임 전용 스타일 */
+        /* 🔥 하이파이브 게임 전용 스타일 (렉 방지를 위해 transition 최소화) */
         .hand-container { position: absolute; display: flex; flex-direction: column; align-items: center; user-select: none; transform: translate(-50%, -50%); z-index: 5; }
         .emoji { font-size: 35px; line-height: 1; transition: font-size 0.2s; }
         .hf-label { margin-top: 5px; font-size: 12px; font-weight: bold; background-color: #333; color: #fff; padding: 4px 8px; border-radius: 12px; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: all 0.1s; }
@@ -272,8 +272,8 @@
             <button id="my-clap-btn" class="btn-clap" onclick="sendMyClap()" style="display:none; margin: 0 auto; width: 300px;">짝! 👏</button>
             
             <div id="admin-hf-controls" style="display:none; justify-content: center; gap: 10px; margin: 0 auto; width: 300px;">
-                <button class="bulk-btn" onclick="startHighFiveGame()" style="margin: 0; flex: 1;">다시하기 🔄</button>
-                <button class="delete-btn" onclick="endHighFiveGame()" style="margin: 0; flex: 1;">게임 종료 🛑</button>
+                <button class="bulk-btn" onclick="startHighFiveGame()" style="margin: 0; flex: 1; font-size: 18px;">다시하기 🔄</button>
+                <button class="delete-btn" onclick="endHighFiveGame()" style="margin: 0; flex: 1; font-size: 18px;">게임 종료 🛑</button>
             </div>
 
             <div id="hf-message" style="margin-top: 20px; height: 30px; font-size: 18px; font-weight: bold; color: #E64A19;"></div>
@@ -411,13 +411,15 @@
             const data = snap.val() || { status: 'closed', users: {} };
             hfStatus = data.status;
             
-            // 좀비 노드 필터링 (안전장치 추가)
+            // 🔥 [버그 해결] 좀비 노드(찌꺼기 데이터) 철저한 필터링
             const rawUsers = data.users || {};
             localHfUsers = {};
             Object.keys(rawUsers).forEach(uid => {
+                // 닉네임 정보가 정상적으로 포함되어 있는 데이터만 진짜 유저로 취급
                 if (rawUsers[uid] && rawUsers[uid].nickname) {
                     localHfUsers[uid] = rawUsers[uid];
                 } else if (isAdmin) {
+                    // 비정상(좀비) 데이터는 관리자 화면에서 즉각 DB 삭제 청소
                     db.ref('highFive/users/' + uid).remove();
                 }
             });
@@ -455,11 +457,13 @@
                     cancelAnimationFrame(hfAnimationId);
                     showPage('student-lobby-page');
                 } else if (hfStatus === 'waiting') {
+                    // 관리자가 '게임 종료'를 눌러 상태를 waiting으로 돌린 경우
                     cancelAnimationFrame(hfAnimationId);
                     showPage('highfive-waiting-page');
                     renderHfWaitingUI();
                 } else if (hfStatus === 'playing') {
                     
+                    // 관리자가 '다시하기'를 눌러 DB 정보가 리셋된 경우 클라이언트 화면 초기화
                     let needsReinit = false;
                     Object.keys(localHfUsers).forEach(uid => {
                         let u = localHfUsers[uid];
@@ -527,8 +531,10 @@
             if (hfStatus === 'closed') db.ref('highFive/status').set('waiting');
             
             const ref = db.ref('highFive/users/' + currentUser);
+            // 🔥 방어 로직: 닉네임이 로드되지 않았을 경우 자신의 아이디라도 넣어서 보냄
+            const safeNickname = localStudentAccounts[currentUser]?.nickname || currentUser;
             ref.set({
-                nickname: localStudentAccounts[currentUser]?.nickname || currentUser,
+                nickname: safeNickname,
                 avatarId: myCurrentAvatar,
                 isWaiting: false
             });
@@ -723,6 +729,7 @@
         function endHighFiveGame() {
             if (isAdmin) {
                 clearInterval(hfSpeedChangerId);
+                // 🛑 방 폭파 대신 'waiting' 대기실 상태로 전환
                 let updates = {};
                 updates['highFive/status'] = 'waiting';
                 Object.keys(localHfUsers).forEach(uid => {
@@ -1247,96 +1254,6 @@
                 const myNick = localStudentAccounts[currentUser]?.nickname || currentUser;
                 db.ref('chatLog').push().set({ sender: 'system', message: `${myNick}이(가) ${acceptedNicks.join(', ')}의 조르기를 수락하여 보석을 주었습니다! 🎉`, isAlert: true, alertColor: '#28a745', timestamp: firebase.database.ServerValue.TIMESTAMP });
                 alert('선택한 친구들의 조르기를 수락했습니다!'); selectedStudentsForGems = []; renderOnlineUsers();
-            });
-        }
-
-        function renderOnlineUsers() {
-            const listDiv = document.getElementById('online-users-list'); 
-            if (!listDiv) return;
-            listDiv.innerHTML = '';
-            const ids = Object.keys(localOnlineUsers);
-            if (ids.length === 0) { listDiv.innerHTML = '<p style="color: #888; font-size: 18px;">현재 대기실에 아무도 없습니다.</p>'; return; }
-            const now = Date.now();
-            ids.forEach(id => {
-                if (id === '⭐상티') return; 
-                const user = localOnlineUsers[id]; 
-                if (!user) return;
-                const userDiv = document.createElement('div'); userDiv.className = 'online-user-item';
-                if (selectedStudentsForGems.includes(id)) userDiv.classList.add('selected');
-                if (id !== currentUser) {
-                    userDiv.style.cursor = 'pointer';
-                    userDiv.onclick = () => {
-                        if (selectedStudentsForGems.includes(id)) selectedStudentsForGems = selectedStudentsForGems.filter(sid => sid !== id);
-                        else selectedStudentsForGems.push(id);
-                        renderOnlineUsers();
-                    };
-                }
-                let requestBadge = '';
-                if (!isAdmin && currentUser) {
-                    const reqFromThisUser = pendingRequests.find(req => req.from === id);
-                    if (reqFromThisUser) {
-                        let timeLeft = Math.max(0, Math.ceil((reqFromThisUser.expiresAt - now) / 1000));
-                        requestBadge = `<div id="badge-${id.replace(/[^a-zA-Z0-9_-]/g, '_')}" style="position:absolute; top:-10px; right:-20px; background:#dc3545; color:white; font-size:12px; font-weight:bold; padding:2px 6px; border-radius:10px; z-index:11; box-shadow:0 2px 4px rgba(0,0,0,0.2); white-space: nowrap;">🙏${reqFromThisUser.amount}개 (${timeLeft}s)</div>`;
-                    }
-                }
-                let bubbleHTML = '';
-                if (user.bubble && user.bubbleTime && (now - user.bubbleTime < 5000)) {
-                    let displayMsg = user.bubble.length > 15 ? user.bubble.substring(0, 15) + '...' : user.bubble;
-                    bubbleHTML = `<div class="speech-bubble">${displayMsg}</div>`;
-                }
-                let displayId = user.nickname || id; if (displayId.length > 8) displayId = displayId.substring(0,8) + '..';
-                const isMe = (id === currentUser) ? '<span style="color: #ff9800; font-size:14px;"><br>(나)</span>' : '';
-                
-                // 🔥 메인 로비 목록에 "진행중" 또는 "대기중" 상태 세분화 표시
-                let hfStatusText = '';
-                if (localHfUsers[id] && hfStatus !== 'closed') {
-                    if (hfStatus === 'playing') {
-                        hfStatusText = `<br><span style="font-size:12px; color:#e83e8c; font-weight:bold;">✋진행중</span>`;
-                    } else {
-                        hfStatusText = `<br><span style="font-size:12px; color:#e83e8c; font-weight:bold;">✋대기중</span>`;
-                    }
-                }
-
-                userDiv.innerHTML = `${requestBadge}${bubbleHTML}<img src="${user.avatarId}" alt="아바타" class="online-user-avatar"><span style="font-weight:bold; text-align:center;">${displayId} ${isMe}${hfStatusText}</span>`;
-                listDiv.appendChild(userDiv);
-            });
-        }
-
-        function showStudentShopPage() { renderStudentShop(); showPage('student-shop-page'); }
-        function renderStudentShop() {
-            const listDiv = document.getElementById('student-shop-list'); listDiv.innerHTML = ''; const myGems = localStudentAccounts[currentUser]?.gems || 0;
-            document.getElementById('my-gems-display').innerText = `내 보석: 💎 ${myGems}`;
-            if (localShopItems.length === 0) { listDiv.innerHTML = '<p style="color: #888; font-size: 18px; grid-column: 1 / -1;">현재 등록된 상품이 없습니다.</p>'; return; }
-            const myOwnedAvatars = localStudentAccounts[currentUser]?.ownedAvatars || DEFAULT_AVATARS;
-            localShopItems.forEach(avatarId => {
-                const itemDiv = document.createElement('div'); itemDiv.className = 'avatar-item'; const dbKey = avatarId.replace('.', '_');
-                const avatarName = localShopNames[dbKey] || `${avatarId.split('.')[0]}번 아바타`; const avatarPrice = localShopPrices[dbKey] !== undefined ? localShopPrices[dbKey] : 1;
-                const nameText = `<span style="font-size: 18px; color: #333; margin-top: 8px;">${avatarName}</span>`;
-                if (myOwnedAvatars.includes(avatarId)) { itemDiv.innerHTML = `<img src="${avatarId}" alt="아바타" style="opacity: 0.5;">${nameText}<div class="owned-tag">보유 중</div>`; } 
-                else { itemDiv.innerHTML = `<img src="${avatarId}" alt="아바타">${nameText}<button class="buy-btn" onclick="buyAvatar('${avatarId}')">💎 ${avatarPrice} 구입하기</button>`; }
-                listDiv.appendChild(itemDiv);
-            });
-        }
-
-        function buyAvatar(avatarId) {
-            const dbKey = avatarId.replace('.', '_'); const price = localShopPrices[dbKey] !== undefined ? localShopPrices[dbKey] : 1;
-            let myOwnedAvatars = localStudentAccounts[currentUser]?.ownedAvatars || DEFAULT_AVATARS; let myGems = localStudentAccounts[currentUser]?.gems || 0;
-            if (myOwnedAvatars.includes(avatarId)) return alert('이미 보유한 아바타입니다.'); if (myGems < price) return alert('보석이 부족합니다!');
-            myGems -= price; myOwnedAvatars.push(avatarId); db.ref('studentAccounts/' + currentUser).update({ ownedAvatars: myOwnedAvatars, gems: myGems });
-            alert('아바타를 성공적으로 구입했습니다! 보관함에서 확인해보세요. 🎉');
-        }
-
-        function showStoragePage() { tempSelectedAvatar = myCurrentAvatar; renderAvatarList(); showPage('storage-page'); }
-        function renderAvatarList() {
-            const listDiv = document.getElementById('avatar-list'); listDiv.innerHTML = '';
-            const myOwnedAvatars = localStudentAccounts[currentUser]?.ownedAvatars || DEFAULT_AVATARS;
-            myOwnedAvatars.forEach(avatarId => {
-                const avatarDiv = document.createElement('div'); avatarDiv.className = 'avatar-item';
-                if (avatarId === tempSelectedAvatar) avatarDiv.classList.add('selected');
-                avatarDiv.onclick = () => { tempSelectedAvatar = avatarId; listDiv.querySelectorAll('.avatar-item').forEach(item => item.classList.remove('selected')); avatarDiv.classList.add('selected'); };
-                let avatarName = (avatarId === 'image_0.png') ? '기본 남자' : (avatarId === 'image_1.png') ? '기본 여자' : (localShopNames[avatarId.replace('.', '_')] || `${avatarId.split('.')[0]}번 아바타`);
-                avatarDiv.innerHTML = `<img src="${avatarId}" alt="아바타"><p style="font-size: 18px; color: #333; margin-top: 15px;">${avatarName}</p>`;
-                listDiv.appendChild(avatarDiv);
             });
         }
     </script>
