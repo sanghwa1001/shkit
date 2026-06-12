@@ -72,7 +72,7 @@
         .owned-tag { font-size: 16px; color: #fff; background: #888; border-radius: 8px; padding: 6px 12px; margin-top: 10px; }
         .gem-display { font-size: 24px; color: #d84315; background: #ffcc80; padding: 12px 25px; border-radius: 25px; display: inline-block; margin-bottom: 20px; border: 3px solid #ffb74d; box-shadow: 0 4px 0 #ff9800;}
 
-        /* 🔥 하이파이브 게임 전용 스타일 (렉 방지를 위해 transition 최소화) */
+        /* 🔥 하이파이브 게임 전용 스타일 */
         .hand-container { position: absolute; display: flex; flex-direction: column; align-items: center; user-select: none; transform: translate(-50%, -50%); z-index: 5; }
         .emoji { font-size: 35px; line-height: 1; transition: font-size 0.2s; }
         .hf-label { margin-top: 5px; font-size: 12px; font-weight: bold; background-color: #333; color: #fff; padding: 4px 8px; border-radius: 12px; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: all 0.1s; }
@@ -222,15 +222,19 @@
             <h2>💎 아바타 상점</h2>
             <div id="my-gems-display" class="gem-display">내 보석: 💎 0</div>
             <div id="student-shop-list" class="avatar-list-container"></div>
-            <button class="secondary-btn" onclick="showPage('student-lobby-page')">이전으로</button>
+            <div class="login-btn-group" style="flex-direction: row; flex-wrap: wrap;">
+                <button class="secondary-btn" onclick="showPage('student-lobby-page')" style="flex: 1;">이전으로</button>
+            </div>
         </div>
 
         <div id="storage-page" class="page">
             <h2>🎒 아바타 보관함</h2>
             <p style="font-size: 18px; color: #555;">장착할 아바타 고르기!</p>
             <div id="avatar-list" class="avatar-list-container"></div>
-            <button class="bulk-btn" onclick="applySelectedAvatar()">장착하기</button>
-            <button class="secondary-btn" onclick="showPage('student-lobby-page')">이전으로</button>
+            <div class="login-btn-group" style="flex-direction: row; flex-wrap: wrap;">
+                <button class="bulk-btn" onclick="applySelectedAvatar()" style="flex: 1;">장착하기</button>
+                <button class="secondary-btn" onclick="showPage('student-lobby-page')" style="flex: 1;">이전으로</button>
+            </div>
         </div>
 
         <div id="highfive-waiting-page" class="page">
@@ -266,14 +270,18 @@
             </div>
 
             <button id="my-clap-btn" class="btn-clap" onclick="sendMyClap()" style="display:none; margin: 0 auto;">짝! 👏</button>
+            
+            <div id="admin-hf-controls" style="display:none; justify-content: center; gap: 10px; margin: 0 auto; width: 300px;">
+                <button class="bulk-btn" onclick="startHighFiveGame()" style="margin: 0; flex: 1;">다시하기 🔄</button>
+                <button class="delete-btn" onclick="endHighFiveGame()" style="margin: 0; flex: 1;">게임 종료 🛑</button>
+            </div>
+
             <div id="hf-message" style="margin-top: 20px; height: 30px; font-size: 18px; font-weight: bold; color: #E64A19;"></div>
 
             <div id="hf-match-result-container" style="margin: 20px auto; width: 300px; text-align: center; background: #f8f9fa; border-radius: 15px; padding: 15px; border: 3px dashed #ccc;">
                 <h3 style="margin-top: 0; margin-bottom: 10px; font-size: 18px; color: #555; border-bottom: 2px solid #ddd; padding-bottom: 10px;">🤝 매칭 결과</h3>
                 <ul id="hf-match-list" style="list-style: none; padding: 0; margin: 0;"></ul>
             </div>
-
-            <button id="hf-end-btn" class="delete-btn" onclick="endHighFiveGame()" style="display:none; margin-top:10px;">게임 종료 및 로비 귀환</button>
         </div>
 
     </div>
@@ -402,7 +410,17 @@
         db.ref('highFive').on('value', (snap) => {
             const data = snap.val() || { status: 'closed', users: {} };
             hfStatus = data.status;
-            localHfUsers = data.users || {};
+            
+            // 좀비 노드 필터링
+            const rawUsers = data.users || {};
+            localHfUsers = {};
+            Object.keys(rawUsers).forEach(uid => {
+                if (rawUsers[uid].nickname) {
+                    localHfUsers[uid] = rawUsers[uid];
+                } else if (isAdmin) {
+                    db.ref('highFive/users/' + uid).remove();
+                }
+            });
 
             // 1. 상태 변경에 따른 로비 -> 대기실 이동
             if (currentUser && document.getElementById('student-lobby-page').classList.contains('active')) {
@@ -436,16 +454,33 @@
                 if (hfStatus === 'closed') {
                     cancelAnimationFrame(hfAnimationId);
                     showPage('student-lobby-page');
+                } else if (hfStatus === 'waiting') {
+                    cancelAnimationFrame(hfAnimationId);
+                    showPage('highfive-waiting-page');
+                    renderHfWaitingUI();
                 } else if (hfStatus === 'playing') {
+                    
+                    let needsReinit = false;
+                    Object.keys(localHfUsers).forEach(uid => {
+                        let u = localHfUsers[uid];
+                        if (hfPhysicsData[uid] && hfPhysicsData[uid].hasMerged && !u.matched) {
+                            needsReinit = true;
+                        }
+                    });
+                    
+                    if (needsReinit) {
+                        initLocalPhysics();
+                    }
+
                     Object.keys(localHfUsers).forEach(uid => {
                         let u = localHfUsers[uid];
                         
-                        // 새 재접속자/추가된 인원이 있으면 캔버스에 생성
                         if (!hfPhysicsData[uid]) {
                             hfPhysicsData[uid] = {
                                 angle: u.angle !== undefined ? u.angle : Math.random() * Math.PI * 2,
                                 currentSpeed: u.currentSpeed || 0,
-                                hasMerged: false
+                                hasMerged: false,
+                                lastDbAngle: u.angle
                             };
                             const layer = document.getElementById('hf-hands-layer');
                             const el = document.createElement('div');
@@ -455,15 +490,18 @@
                             layer.appendChild(el);
                         }
 
-                        // 🔥 [렉 해결 핵심] 
-                        // 지속적인 각도 강제 보정을 삭제하여 순간이동(텔레포트) 현상 방지. 
-                        // 목표 속도와 방향만 업데이트하면 브라우저들이 매끄럽게 동일한 궤적을 그림.
-                        if (hfPhysicsData[uid]) {
-                            hfPhysicsData[uid].targetSpeed = u.targetSpeed;
-                            hfPhysicsData[uid].direction = u.direction;
+                        if (!isAdmin && !u.matched && u.angle !== undefined && hfPhysicsData[uid]) {
+                            if (hfPhysicsData[uid].lastDbAngle !== u.angle) {
+                                hfPhysicsData[uid].lastDbAngle = u.angle;
+                                let diff = Math.abs(normalizeAngle(hfPhysicsData[uid].angle) - normalizeAngle(u.angle));
+                                diff = Math.min(diff, Math.PI * 2 - diff);
+                                if (diff > 0.2) { 
+                                    hfPhysicsData[uid].angle = u.angle;
+                                    hfPhysicsData[uid].currentSpeed = u.currentSpeed;
+                                }
+                            }
                         }
 
-                        // 매칭 완료 렌더링
                         if (u.matched && hfPhysicsData[uid] && !hfPhysicsData[uid].hasMerged) {
                             hfPhysicsData[uid].hasMerged = true;
                             renderMatchResult(uid, u.matchedWith);
@@ -472,7 +510,6 @@
                 }
             }
             
-            // 메인 로비에 있는 사람들을 위한 알림 렌더링
             if (currentUser && document.getElementById('student-lobby-page').classList.contains('active')) {
                 renderOnlineUsers(); 
             }
@@ -491,7 +528,7 @@
             
             const ref = db.ref('highFive/users/' + currentUser);
             ref.set({
-                nickname: localStudentAccounts[currentUser].nickname || currentUser,
+                nickname: localStudentAccounts[currentUser]?.nickname || currentUser,
                 avatarId: myCurrentAvatar,
                 isWaiting: false
             });
@@ -620,8 +657,9 @@
 
         function reconnectHighFive() {
             const ref = db.ref('highFive/users/' + currentUser);
+            const safeNickname = localStudentAccounts[currentUser]?.nickname || currentUser;
             ref.set({
-                nickname: localStudentAccounts[currentUser].nickname || currentUser,
+                nickname: safeNickname,
                 avatarId: myCurrentAvatar,
                 isWaiting: true,
                 targetSpeed: Math.random() * 0.04 + 0.01,
@@ -648,6 +686,10 @@
         
         function startHighFiveGame() {
             if (!isAdmin) return;
+
+            if (document.getElementById('highfive-game-page').classList.contains('active')) {
+                initLocalPhysics();
+            }
             
             let updates = {};
             Object.keys(localHfUsers).forEach(uid => {
@@ -666,13 +708,29 @@
                 let speedUpdates = {};
                 Object.keys(localHfUsers).forEach(uid => {
                     if (!localHfUsers[uid].matched && hfPhysicsData[uid]) {
-                         // 🔥 연속적인 절대각도 전송(렉의 원인)을 제거하고, 목표 속도와 방향만 넘깁니다.
                          speedUpdates['highFive/users/' + uid + '/targetSpeed'] = Math.random() * 0.05 + 0.01;
                          if (Math.random() > 0.6) speedUpdates['highFive/users/' + uid + '/direction'] = localHfUsers[uid].direction * -1;
+                         
+                         speedUpdates['highFive/users/' + uid + '/angle'] = hfPhysicsData[uid].angle;
+                         speedUpdates['highFive/users/' + uid + '/currentSpeed'] = hfPhysicsData[uid].currentSpeed;
                     }
                 });
                 db.ref().update(speedUpdates);
-            }, 1500); 
+            }, 1000); 
+        }
+
+        function endHighFiveGame() {
+            if (isAdmin) {
+                clearInterval(hfSpeedChangerId);
+                let updates = {};
+                updates['highFive/status'] = 'waiting';
+                Object.keys(localHfUsers).forEach(uid => {
+                    updates['highFive/users/' + uid + '/matched'] = false;
+                    updates['highFive/users/' + uid + '/matchedWith'] = null;
+                    updates['highFive/users/' + uid + '/isClapping'] = false;
+                });
+                db.ref().update(updates);
+            }
         }
 
         function initLocalPhysics() {
@@ -705,10 +763,10 @@
 
             if (!isAdmin) {
                 document.getElementById('my-clap-btn').style.display = 'block';
-                document.getElementById('hf-end-btn').style.display = 'none';
+                document.getElementById('admin-hf-controls').style.display = 'none';
             } else {
                 document.getElementById('my-clap-btn').style.display = 'none';
-                document.getElementById('hf-end-btn').style.display = 'block';
+                document.getElementById('admin-hf-controls').style.display = 'flex';
             }
         }
 
@@ -727,7 +785,6 @@
                 const phys = hfPhysicsData[uid];
                 if (dbUser.matched) return;
 
-                // 서버에서 내려온 목표속도로 부드럽게 연산 (모든 브라우저가 동일 연산 수행)
                 phys.currentSpeed += ((phys.targetSpeed || 0) - phys.currentSpeed) * 0.05;
                 phys.angle += phys.currentSpeed * (phys.direction || 1);
 
@@ -770,7 +827,6 @@
                             let diff = Math.abs(a1 - a2);
                             diff = Math.min(diff, Math.PI * 2 - diff);
 
-                            // 🔥 판정 범위를 0.4로 넓혀서 타격감 있게 보정 (지연시간 극복)
                             if (diff < 0.4) {
                                 db.ref('highFive/users/' + id1).update({ matched: true, matchedWith: id2 });
                                 db.ref('highFive/users/' + id2).update({ matched: true, matchedWith: id1 });
@@ -792,7 +848,7 @@
             setTimeout(() => {
                 db.ref('highFive/users/' + currentUser).update({ isClapping: false });
                 btn.classList.remove('active-clap');
-            }, 600); // 🔥 입력 판정 유지시간 0.6초로 넉넉하게
+            }, 600); 
         }
 
         function renderMatchResult(id1, id2) {
@@ -826,13 +882,6 @@
                 setTimeout(() => {
                     document.getElementById('hf-message').innerText = "🎊 모든 짝이 맞춰졌습니다! 🎊";
                 }, 1500);
-            }
-        }
-
-        function endHighFiveGame() {
-            if (isAdmin) {
-                clearInterval(hfSpeedChangerId);
-                db.ref('highFive').remove();
             }
         }
 
@@ -1197,87 +1246,6 @@
                 const myNick = localStudentAccounts[currentUser]?.nickname || currentUser;
                 db.ref('chatLog').push().set({ sender: 'system', message: `${myNick}이(가) ${acceptedNicks.join(', ')}의 조르기를 수락하여 보석을 주었습니다! 🎉`, isAlert: true, alertColor: '#28a745', timestamp: firebase.database.ServerValue.TIMESTAMP });
                 alert('선택한 친구들의 조르기를 수락했습니다!'); selectedStudentsForGems = []; renderOnlineUsers();
-            });
-        }
-
-        function renderOnlineUsers() {
-            const listDiv = document.getElementById('online-users-list'); listDiv.innerHTML = '';
-            const ids = Object.keys(localOnlineUsers);
-            if (ids.length === 0) { listDiv.innerHTML = '<p style="color: #888; font-size: 18px;">현재 대기실에 아무도 없습니다.</p>'; return; }
-            const now = Date.now();
-            ids.forEach(id => {
-                if (id === '⭐상티') return; 
-                const user = localOnlineUsers[id]; const userDiv = document.createElement('div'); userDiv.className = 'online-user-item';
-                if (selectedStudentsForGems.includes(id)) userDiv.classList.add('selected');
-                if (id !== currentUser) {
-                    userDiv.style.cursor = 'pointer';
-                    userDiv.onclick = () => {
-                        if (selectedStudentsForGems.includes(id)) selectedStudentsForGems = selectedStudentsForGems.filter(sid => sid !== id);
-                        else selectedStudentsForGems.push(id);
-                        renderOnlineUsers();
-                    };
-                }
-                let requestBadge = '';
-                if (!isAdmin && currentUser) {
-                    const reqFromThisUser = pendingRequests.find(req => req.from === id);
-                    if (reqFromThisUser) {
-                        let timeLeft = Math.max(0, Math.ceil((reqFromThisUser.expiresAt - now) / 1000));
-                        requestBadge = `<div id="badge-${id.replace(/[^a-zA-Z0-9_-]/g, '_')}" style="position:absolute; top:-10px; right:-20px; background:#dc3545; color:white; font-size:12px; font-weight:bold; padding:2px 6px; border-radius:10px; z-index:11; box-shadow:0 2px 4px rgba(0,0,0,0.2); white-space: nowrap;">🙏${reqFromThisUser.amount}개 (${timeLeft}s)</div>`;
-                    }
-                }
-                let bubbleHTML = '';
-                if (user.bubble && user.bubbleTime && (now - user.bubbleTime < 5000)) {
-                    let displayMsg = user.bubble.length > 15 ? user.bubble.substring(0, 15) + '...' : user.bubble;
-                    bubbleHTML = `<div class="speech-bubble">${displayMsg}</div>`;
-                }
-                let displayId = user.nickname || id; if (displayId.length > 8) displayId = displayId.substring(0,8) + '..';
-                const isMe = (id === currentUser) ? '<span style="color: #ff9800; font-size:14px;"><br>(나)</span>' : '';
-                
-                let hfStatusText = '';
-                if (localHfUsers[id] && hfStatus !== 'closed') {
-                    hfStatusText = `<br><span style="font-size:12px; color:#e83e8c; font-weight:bold;">✋대기중</span>`;
-                }
-
-                userDiv.innerHTML = `${requestBadge}${bubbleHTML}<img src="${user.avatarId}" alt="아바타" class="online-user-avatar"><span style="font-weight:bold; text-align:center;">${displayId} ${isMe}${hfStatusText}</span>`;
-                listDiv.appendChild(userDiv);
-            });
-        }
-
-        function showStudentShopPage() { renderStudentShop(); showPage('student-shop-page'); }
-        function renderStudentShop() {
-            const listDiv = document.getElementById('student-shop-list'); listDiv.innerHTML = ''; const myGems = localStudentAccounts[currentUser]?.gems || 0;
-            document.getElementById('my-gems-display').innerText = `내 보석: 💎 ${myGems}`;
-            if (localShopItems.length === 0) { listDiv.innerHTML = '<p style="color: #888; font-size: 18px; grid-column: 1 / -1;">현재 등록된 상품이 없습니다.</p>'; return; }
-            const myOwnedAvatars = localStudentAccounts[currentUser]?.ownedAvatars || DEFAULT_AVATARS;
-            localShopItems.forEach(avatarId => {
-                const itemDiv = document.createElement('div'); itemDiv.className = 'avatar-item'; const dbKey = avatarId.replace('.', '_');
-                const avatarName = localShopNames[dbKey] || `${avatarId.split('.')[0]}번 아바타`; const avatarPrice = localShopPrices[dbKey] !== undefined ? localShopPrices[dbKey] : 1;
-                const nameText = `<span style="font-size: 18px; color: #333; margin-top: 8px;">${avatarName}</span>`;
-                if (myOwnedAvatars.includes(avatarId)) { itemDiv.innerHTML = `<img src="${avatarId}" alt="아바타" style="opacity: 0.5;">${nameText}<div class="owned-tag">보유 중</div>`; } 
-                else { itemDiv.innerHTML = `<img src="${avatarId}" alt="아바타">${nameText}<button class="buy-btn" onclick="buyAvatar('${avatarId}')">💎 ${avatarPrice} 구입하기</button>`; }
-                listDiv.appendChild(itemDiv);
-            });
-        }
-
-        function buyAvatar(avatarId) {
-            const dbKey = avatarId.replace('.', '_'); const price = localShopPrices[dbKey] !== undefined ? localShopPrices[dbKey] : 1;
-            let myOwnedAvatars = localStudentAccounts[currentUser]?.ownedAvatars || DEFAULT_AVATARS; let myGems = localStudentAccounts[currentUser]?.gems || 0;
-            if (myOwnedAvatars.includes(avatarId)) return alert('이미 보유한 아바타입니다.'); if (myGems < price) return alert('보석이 부족합니다!');
-            myGems -= price; myOwnedAvatars.push(avatarId); db.ref('studentAccounts/' + currentUser).update({ ownedAvatars: myOwnedAvatars, gems: myGems });
-            alert('아바타를 성공적으로 구입했습니다! 보관함에서 확인해보세요. 🎉');
-        }
-
-        function showStoragePage() { tempSelectedAvatar = myCurrentAvatar; renderAvatarList(); showPage('storage-page'); }
-        function renderAvatarList() {
-            const listDiv = document.getElementById('avatar-list'); listDiv.innerHTML = '';
-            const myOwnedAvatars = localStudentAccounts[currentUser]?.ownedAvatars || DEFAULT_AVATARS;
-            myOwnedAvatars.forEach(avatarId => {
-                const avatarDiv = document.createElement('div'); avatarDiv.className = 'avatar-item';
-                if (avatarId === tempSelectedAvatar) avatarDiv.classList.add('selected');
-                avatarDiv.onclick = () => { tempSelectedAvatar = avatarId; listDiv.querySelectorAll('.avatar-item').forEach(item => item.classList.remove('selected')); avatarDiv.classList.add('selected'); };
-                let avatarName = (avatarId === 'image_0.png') ? '기본 남자' : (avatarId === 'image_1.png') ? '기본 여자' : (localShopNames[avatarId.replace('.', '_')] || `${avatarId.split('.')[0]}번 아바타`);
-                avatarDiv.innerHTML = `<img src="${avatarId}" alt="아바타"><p style="font-size: 18px; color: #333; margin-top: 15px;">${avatarName}</p>`;
-                listDiv.appendChild(avatarDiv);
             });
         }
     </script>
