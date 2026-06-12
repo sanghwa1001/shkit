@@ -213,7 +213,7 @@
                 <button id="admin-shop-lobby-btn" onclick="showAdminShopPage('student-lobby-page')" style="display: none; background-color: #ff9800; border-color:#e65100; box-shadow: 0 6px 0 #bf360c;">💎 상점 관리</button>
                 <button id="admin-manage-lobby-btn" onclick="showManagePage('student-lobby-page')" style="display: none;">학생 계정 수정</button>
                 
-                <button id="admin-highfive-btn" onclick="forceHighFiveAdmin()" style="display:none; background-color: #e83e8c; border-color:#d81b60; box-shadow: 0 6px 0 #ad1457;">✋ 하이파이브</button>
+                <button id="admin-highfive-btn" onclick="enterHighFiveAdmin()" style="display:none; background-color: #e83e8c; border-color:#d81b60; box-shadow: 0 6px 0 #ad1457;">✋ 하이파이브</button>
                 <button id="admin-back-lobby-btn" class="secondary-btn" onclick="showPage('admin-menu-page')" style="display: none;">이전으로</button>
             </div>
         </div>
@@ -246,7 +246,10 @@
 
             <div class="login-btn-group" style="flex-direction: row; flex-wrap: wrap;">
                 <button id="hf-wait-btn" class="bulk-btn" onclick="toggleHfWait()" style="flex:1;">대기하기</button>
+                
+                <button id="hf-call-btn" class="bulk-btn" onclick="callAllStudentsToHf()" style="display:none; flex:1;">학생들 호출하기</button>
                 <button id="hf-start-btn" onclick="startHighFiveGame()" style="display:none; flex:1; background-color: #ccc; border-color: #999; box-shadow: 0 6px 0 #777;" disabled>시작하기</button>
+                
                 <button id="hf-back-btn" class="secondary-btn" onclick="exitHighFiveLobby()" style="flex:1;">이전으로</button>
             </div>
         </div>
@@ -413,9 +416,14 @@
             // 2. 대기실에 있을 때 실시간 목록 업데이트
             if (currentUser && document.getElementById('highfive-waiting-page').classList.contains('active')) {
                 if (hfStatus === 'playing') {
-                    initLocalPhysics();
-                    showPage('highfive-game-page');
-                    animateHf();
+                    // 참가자(혹은 관리자)만 게임 화면으로 자동 이동, 재접속자는 대기실 유지
+                    if (localHfUsers[currentUser] || isAdmin) {
+                        initLocalPhysics();
+                        showPage('highfive-game-page');
+                        animateHf();
+                    } else {
+                        renderHfWaitingUI();
+                    }
                 } else if (hfStatus === 'closed') {
                     alert("하이파이브 게임이 종료되어 로비로 이동합니다.");
                     showPage('student-lobby-page');
@@ -424,13 +432,28 @@
                 }
             }
 
-            // 3. 게임 중 매칭 렌더링
+            // 3. 게임 중 매칭 렌더링 & 재접속/퇴장 감지
             if (currentUser && document.getElementById('highfive-game-page').classList.contains('active')) {
                 if (hfStatus === 'closed') {
                     cancelAnimationFrame(hfAnimationId);
                     showPage('student-lobby-page');
                 } else if (hfStatus === 'playing') {
+                    // 재접속한 새로운 유저가 있으면 캔버스에 추가 생성
                     Object.keys(localHfUsers).forEach(uid => {
+                        if (!hfPhysicsData[uid]) {
+                            hfPhysicsData[uid] = {
+                                angle: Math.random() * Math.PI * 2,
+                                currentSpeed: 0,
+                                hasMerged: false
+                            };
+                            const layer = document.getElementById('hf-hands-layer');
+                            const el = document.createElement('div');
+                            el.className = 'hand-container';
+                            el.id = 'hf-hand-' + uid;
+                            el.innerHTML = `<div class="emoji">✋</div><div class="hf-label">${localHfUsers[uid].nickname}</div>`;
+                            layer.appendChild(el);
+                        }
+                        
                         let u = localHfUsers[uid];
                         if (u.matched && hfPhysicsData[uid] && !hfPhysicsData[uid].hasMerged) {
                             hfPhysicsData[uid].hasMerged = true;
@@ -444,7 +467,12 @@
         // ------------------------- 하이파이브 로직 -------------------------
 
         function enterHighFiveLobbyVoluntary() {
-            if (hfStatus === 'playing') return alert('이미 하이파이브 게임이 진행 중입니다.');
+            if (hfStatus === 'playing') {
+                // 게임 중이면 DB에 바로 추가하지 않고 대기실만 보여줌 (재접속 대기)
+                showPage('highfive-waiting-page');
+                renderHfWaitingUI();
+                return;
+            }
             
             if (hfStatus === 'closed') db.ref('highFive/status').set('waiting');
             
@@ -460,7 +488,16 @@
             renderHfWaitingUI(); 
         }
 
-        function forceHighFiveAdmin() {
+        function enterHighFiveAdmin() {
+            if (hfStatus === 'closed') {
+                db.ref('highFive/status').set('waiting');
+            }
+            showPage('highfive-waiting-page');
+            renderHfWaitingUI();
+        }
+
+        function callAllStudentsToHf() {
+            if (!isAdmin) return;
             let updates = { 'highFive/status': 'forced' };
             Object.keys(localOnlineUsers).forEach(uid => {
                 if (uid !== '⭐상티') {
@@ -472,8 +509,7 @@
                 }
             });
             db.ref().update(updates);
-            showPage('highfive-waiting-page');
-            renderHfWaitingUI();
+            alert('로비에 있는 모든 학생을 호출했습니다!');
         }
 
         function renderHfWaitingUI() {
@@ -507,18 +543,27 @@
 
             if (!isAdmin) {
                 const btn = document.getElementById('hf-wait-btn');
-                const myState = localHfUsers[currentUser]?.isWaiting;
                 
-                if (myState) {
-                    btn.innerText = '준비 완료 (취소)';
+                if (hfStatus === 'playing') {
+                    btn.innerText = '재접속하기';
                     btn.style.backgroundColor = '#17a2b8';
                     btn.style.borderColor = '#117a8b';
                     btn.style.boxShadow = '0 6px 0 #0f6674';
+                    btn.onclick = reconnectHighFive;
                 } else {
-                    btn.innerText = '대기하기';
-                    btn.style.backgroundColor = '#28a745';
-                    btn.style.borderColor = '#1e7e34';
-                    btn.style.boxShadow = '0 6px 0 #155724';
+                    const myState = localHfUsers[currentUser]?.isWaiting;
+                    if (myState) {
+                        btn.innerText = '준비 완료 (취소)';
+                        btn.style.backgroundColor = '#17a2b8';
+                        btn.style.borderColor = '#117a8b';
+                        btn.style.boxShadow = '0 6px 0 #0f6674';
+                    } else {
+                        btn.innerText = '대기하기';
+                        btn.style.backgroundColor = '#28a745';
+                        btn.style.borderColor = '#1e7e34';
+                        btn.style.boxShadow = '0 6px 0 #155724';
+                    }
+                    btn.onclick = toggleHfWait;
                 }
 
                 const backBtn = document.getElementById('hf-back-btn');
@@ -537,6 +582,7 @@
 
             if (isAdmin) {
                 document.getElementById('hf-wait-btn').style.display = 'none';
+                document.getElementById('hf-call-btn').style.display = 'block';
                 document.getElementById('hf-start-btn').style.display = 'block';
                 
                 const startBtn = document.getElementById('hf-start-btn');
@@ -557,6 +603,20 @@
         function toggleHfWait() {
             const isWaiting = localHfUsers[currentUser]?.isWaiting;
             db.ref('highFive/users/' + currentUser).update({ isWaiting: !isWaiting });
+        }
+
+        function reconnectHighFive() {
+            const ref = db.ref('highFive/users/' + currentUser);
+            ref.set({
+                nickname: localStudentAccounts[currentUser].nickname || currentUser,
+                avatarId: myCurrentAvatar,
+                isWaiting: true,
+                targetSpeed: Math.random() * 0.04 + 0.01,
+                direction: Math.random() > 0.5 ? 1 : -1,
+                matched: false,
+                isClapping: false
+            });
+            ref.onDisconnect().remove();
         }
 
         function exitHighFiveLobby() {
@@ -635,10 +695,18 @@
         function animateHf() {
             if (hfStatus !== 'playing') return;
 
-            Object.keys(localHfUsers).forEach(uid => {
+            // 접속이 끊긴(DB에서 사라진) 유저의 캔버스 화면 정리
+            Object.keys(hfPhysicsData).forEach(uid => {
+                if (!localHfUsers[uid]) {
+                    const el = document.getElementById('hf-hand-' + uid);
+                    if (el) el.remove();
+                    delete hfPhysicsData[uid];
+                    return; 
+                }
+
                 const dbUser = localHfUsers[uid];
                 const phys = hfPhysicsData[uid];
-                if (!phys || dbUser.matched) return;
+                if (dbUser.matched) return;
 
                 phys.currentSpeed += (dbUser.targetSpeed - phys.currentSpeed) * 0.05;
                 phys.angle += phys.currentSpeed * dbUser.direction;
@@ -676,14 +744,17 @@
                     if (db1.matched || db2.matched) continue;
 
                     if (db1.isClapping && db2.isClapping) {
-                        const a1 = normalizeAngle(hfPhysicsData[id1].angle);
-                        const a2 = normalizeAngle(hfPhysicsData[id2].angle);
-                        let diff = Math.abs(a1 - a2);
-                        diff = Math.min(diff, Math.PI * 2 - diff);
+                        // 관리자 화면의 물리 연산값을 기준으로 충돌 판정 (동기화)
+                        if (hfPhysicsData[id1] && hfPhysicsData[id2]) {
+                            const a1 = normalizeAngle(hfPhysicsData[id1].angle);
+                            const a2 = normalizeAngle(hfPhysicsData[id2].angle);
+                            let diff = Math.abs(a1 - a2);
+                            diff = Math.min(diff, Math.PI * 2 - diff);
 
-                        if (diff < 0.18) {
-                            db.ref('highFive/users/' + id1).update({ matched: true, matchedWith: id2 });
-                            db.ref('highFive/users/' + id2).update({ matched: true, matchedWith: id1 });
+                            if (diff < 0.18) {
+                                db.ref('highFive/users/' + id1).update({ matched: true, matchedWith: id2 });
+                                db.ref('highFive/users/' + id2).update({ matched: true, matchedWith: id1 });
+                            }
                         }
                     }
                 }
