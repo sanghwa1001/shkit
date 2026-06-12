@@ -73,8 +73,8 @@
         .gem-display { font-size: 24px; color: #d84315; background: #ffcc80; padding: 12px 25px; border-radius: 25px; display: inline-block; margin-bottom: 20px; border: 3px solid #ffb74d; box-shadow: 0 4px 0 #ff9800;}
 
         /* 🔥 하이파이브 게임 전용 스타일 */
-        .hand-container { position: absolute; display: flex; flex-direction: column; align-items: center; user-select: none; transform: translate(-50%, -50%); transition: left 0.1s linear, top 0.1s linear; z-index: 5; }
-        .emoji { font-size: 35px; line-height: 1; transition: font-size 0.2s, transform 0.1s; }
+        .hand-container { position: absolute; display: flex; flex-direction: column; align-items: center; user-select: none; transform: translate(-50%, -50%); z-index: 5; }
+        .emoji { font-size: 35px; line-height: 1; transition: font-size 0.2s; }
         .hf-label { margin-top: 5px; font-size: 12px; font-weight: bold; background-color: #333; color: #fff; padding: 4px 8px; border-radius: 12px; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: all 0.1s; }
         .hf-label.clapping { background-color: #FFEB3B; color: #E64A19; transform: scale(1.3); box-shadow: 0 0 10px #FFEB3B; z-index: 100; }
         .hf-label.matched-label { background-color: #FF5722; color: white; transform: scale(1); box-shadow: none; z-index: 101; }
@@ -416,6 +416,7 @@
             // 2. 대기실에 있을 때 실시간 목록 및 렌더링
             if (currentUser && document.getElementById('highfive-waiting-page').classList.contains('active')) {
                 if (hfStatus === 'playing') {
+                    // 참가자(혹은 관리자)만 게임 화면으로 자동 이동, 재접속자는 대기실 유지
                     if (localHfUsers[currentUser] || isAdmin) {
                         initLocalPhysics();
                         showPage('highfive-game-page');
@@ -431,7 +432,7 @@
                 }
             }
 
-            // 3. 게임 중 동기화 및 렌더링
+            // 3. 게임 중 동기화 및 렌더링 & 재접속/퇴장 감지
             if (currentUser && document.getElementById('highfive-game-page').classList.contains('active')) {
                 if (hfStatus === 'closed') {
                     cancelAnimationFrame(hfAnimationId);
@@ -445,7 +446,8 @@
                             hfPhysicsData[uid] = {
                                 angle: u.angle !== undefined ? u.angle : Math.random() * Math.PI * 2,
                                 currentSpeed: u.currentSpeed || 0,
-                                hasMerged: false
+                                hasMerged: false,
+                                lastDbAngle: u.angle // 🔥 렉(튕김) 방지용 최신 각도 기억 변수
                             };
                             const layer = document.getElementById('hf-hands-layer');
                             const el = document.createElement('div');
@@ -455,13 +457,19 @@
                             layer.appendChild(el);
                         }
 
-                        // 🔥 [동기화] 학생 화면에서는 관리자가 보내주는 angle과 비교하여 오차가 나면 강제로 각도를 맞춰 똑같이 보이게 함
+                        // 🔥 [렉 해결 핵심] 
+                        // 관리자가 새 위치를 보냈을 때(lastDbAngle이 달라졌을 때)만 화면을 보정합니다.
+                        // 이 코드가 있어야 '짝' 버튼을 연타해도 손바닥이 과거 위치로 튕기지 않습니다.
                         if (!isAdmin && !u.matched && u.angle !== undefined && hfPhysicsData[uid]) {
-                            let diff = Math.abs(normalizeAngle(hfPhysicsData[uid].angle) - normalizeAngle(u.angle));
-                            diff = Math.min(diff, Math.PI * 2 - diff);
-                            if (diff > 0.15) { 
-                                hfPhysicsData[uid].angle = u.angle;
-                                hfPhysicsData[uid].currentSpeed = u.currentSpeed;
+                            if (hfPhysicsData[uid].lastDbAngle !== u.angle) {
+                                hfPhysicsData[uid].lastDbAngle = u.angle;
+                                let diff = Math.abs(normalizeAngle(hfPhysicsData[uid].angle) - normalizeAngle(u.angle));
+                                diff = Math.min(diff, Math.PI * 2 - diff);
+                                // 오차가 클 때만 동기화 보정
+                                if (diff > 0.2) { 
+                                    hfPhysicsData[uid].angle = u.angle;
+                                    hfPhysicsData[uid].currentSpeed = u.currentSpeed;
+                                }
                             }
                         }
 
@@ -657,7 +665,6 @@
                 updates['highFive/users/' + uid + '/direction'] = Math.random() > 0.5 ? 1 : -1;
                 updates['highFive/users/' + uid + '/matched'] = false;
                 updates['highFive/users/' + uid + '/isClapping'] = false;
-                // 시작 시 모두에게 절대적인 초기 각도를 부여하여 동기화의 기준점으로 삼음
                 updates['highFive/users/' + uid + '/angle'] = Math.random() * Math.PI * 2;
                 updates['highFive/users/' + uid + '/currentSpeed'] = 0;
             });
@@ -672,7 +679,6 @@
                          speedUpdates['highFive/users/' + uid + '/targetSpeed'] = Math.random() * 0.05 + 0.01;
                          if (Math.random() > 0.6) speedUpdates['highFive/users/' + uid + '/direction'] = localHfUsers[uid].direction * -1;
                          
-                         // 🔥 관리자 화면의 절대적인 위치값을 1초마다 지속적으로 데이터베이스에 뿌림
                          speedUpdates['highFive/users/' + uid + '/angle'] = hfPhysicsData[uid].angle;
                          speedUpdates['highFive/users/' + uid + '/currentSpeed'] = hfPhysicsData[uid].currentSpeed;
                     }
@@ -694,7 +700,8 @@
                 hfPhysicsData[uid] = {
                     angle: u.angle !== undefined ? u.angle : Math.random() * Math.PI * 2,
                     currentSpeed: u.currentSpeed || 0,
-                    hasMerged: false
+                    hasMerged: false,
+                    lastDbAngle: u.angle
                 };
 
                 const el = document.createElement('div');
@@ -720,7 +727,6 @@
             if (hfStatus !== 'playing') return;
 
             Object.keys(hfPhysicsData).forEach(uid => {
-                // 접속이 끊겨 DB에서 제거된 유저의 캔버스 화면 정리
                 if (!localHfUsers[uid]) {
                     const el = document.getElementById('hf-hand-' + uid);
                     if (el) el.remove();
@@ -1236,7 +1242,6 @@
                 let displayId = user.nickname || id; if (displayId.length > 8) displayId = displayId.substring(0,8) + '..';
                 const isMe = (id === currentUser) ? '<span style="color: #ff9800; font-size:14px;"><br>(나)</span>' : '';
                 
-                // 🔥 메인 로비 목록에 "하이파이브 대기중" 텍스트 표시 추가
                 let hfStatusText = '';
                 if (localHfUsers[id] && hfStatus !== 'closed') {
                     hfStatusText = `<br><span style="font-size:12px; color:#e83e8c; font-weight:bold;">✋하이파이브 대기중</span>`;
