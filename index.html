@@ -51,14 +51,65 @@
         .login-btn-group { max-width: 350px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
         .login-btn-group.row { flex-direction: row; justify-content: center; max-width: 100%; }
         
-        button { font-family: 'Jua', sans-serif; width: 100%; padding: 12px 10px; margin: 0; border: 3px solid #0056b3; border-radius: 12px; background-color: #007bff; color: white; font-size: 18px; cursor: pointer; box-shadow: 0 6px 0 #004494; transition: all 0.1s ease; letter-spacing: 0.5px; white-space: nowrap; }
-        button:active:not(:disabled) { transform: translateY(6px); box-shadow: 0 0 0 #004494 !important; }
-        button:disabled { cursor: not-allowed; opacity: 0.7; }
-        
-        .bulk-btn { background-color: #28a745; border-color: #1e7e34; box-shadow: 0 6px 0 #155724; }
-        .delete-btn { background-color: #dc3545; border-color: #bd2130; box-shadow: 0 6px 0 #8b1c24; }
-        .secondary-btn { background-color: #6c757d; border-color: #545b62; box-shadow: 0 6px 0 #3d4246; }
-        .edit-btn { background-color: #28a745; border-color: #1e7e34; box-shadow: 0 4px 0 #155724; padding: 8px; font-size: 15px;}
+        /* 🔥 [정석] CSS 변수를 활용한 컬러 테마 시스템 */
+        :root {
+            --bg-color: #007bff;
+            --bd-color: #0056b3;
+            --sh-color: #004494;
+            --txt-color: #ffffff;
+        }
+
+        .btn-blue   { --bg-color: #007bff; --bd-color: #0056b3; --sh-color: #004494; --txt-color: #ffffff; }
+        .btn-green  { --bg-color: #28a745; --bd-color: #1e7e34; --sh-color: #155724; --txt-color: #ffffff; }
+        .btn-red    { --bg-color: #dc3545; --bd-color: #bd2130; --sh-color: #8b1c24; --txt-color: #ffffff; }
+        .btn-gray   { --bg-color: #6c757d; --bd-color: #545b62; --sh-color: #3d4246; --txt-color: #ffffff; }
+        .btn-orange { --bg-color: #ff9800; --bd-color: #e65100; --sh-color: #bf360c; --txt-color: #ffffff; }
+        .btn-purple { --bg-color: #6f42c1; --bd-color: #59339d; --sh-color: #452679; --txt-color: #ffffff; }
+        .btn-cyan   { --bg-color: #17a2b8; --bd-color: #117a8b; --sh-color: #0f6674; --txt-color: #ffffff; }
+        .btn-pink   { --bg-color: #e83e8c; --bd-color: #d3337a; --sh-color: #b12563; --txt-color: #ffffff; }
+        .btn-disabled { --bg-color: #ccc; --bd-color: #999; --sh-color: #777; --txt-color: #333; }
+
+        /* 기본 대형 버튼 스타일 (PC 기준) */
+        button { 
+            font-family: 'Jua', sans-serif; width: 100%; padding: 12px 10px; margin: 0; 
+            border-radius: 12px; font-size: 18px; cursor: pointer; transition: all 0.1s ease; 
+            letter-spacing: 0.5px; white-space: nowrap; 
+            border-width: 3px; border-style: solid;
+            
+            /* 테마 변수 적용 */
+            background-color: var(--bg-color); 
+            border-color: var(--bd-color); 
+            box-shadow: 0 6px 0 var(--sh-color); 
+            color: var(--txt-color); 
+        }
+
+        button:active:not(:disabled):not(.btn-disabled) { 
+            transform: translateY(6px); 
+            box-shadow: 0 0 0 transparent !important; 
+        }
+        button:disabled, .btn-disabled { 
+            cursor: not-allowed; 
+            opacity: 0.6; 
+            transform: translateY(0) !important;
+        }
+
+        /* 작은 버튼 공통 속성 (PC 기준 4px 그림자) */
+        .btn-sm {
+            padding: 6px 8px;
+            font-size: clamp(13px, 3.5vw, 15px);
+            border-width: 2px;
+            border-radius: 8px;
+            box-shadow: 0 4px 0 var(--sh-color);
+        }
+        .btn-sm:active:not(:disabled):not(.btn-disabled) {
+            transform: translateY(4px);
+        }
+
+        /* 유틸리티 및 전용 레이아웃 클래스 */
+        .chat-action-btn { width: 70px; margin: 0; font-size: 15px; padding: 8px 4px; flex-shrink: 0; }
+        .gem-action-btn, .hf-action-btn { width: auto; flex-shrink: 0; margin: 0; }
+        .edit-btn { padding: 8px; font-size: 15px; width: auto; }
+        .buy-btn { width: 100%; margin: 8px 0 0 0; }
         
         input { font-family: 'Jua', sans-serif; width: 100%; padding: 12px; margin: 10px 0; border: 3px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 18px; background-color: #f9f9f9; transition: border-color 0.3s; }
         input:focus { outline: none; border-color: #007bff; background-color: #fff; }
@@ -77,7 +128,7 @@
         
         .account-item { display: flex; gap: 6px; margin-bottom: 10px; align-items: center; background: white; padding: 6px; border-radius: 8px; border: 2px solid #eee;}
         .account-item input { flex: 1.5; margin: 0; padding: 6px; font-size: 13px; text-align: center; border-width: 2px; min-width: 0;}
-        .account-item button { flex: 1; margin: 0; font-size: 13px; padding: 6px 2px; min-width: 0;}
+        .account-item button { flex: 1; margin: 0; font-size: 13px; min-width: 0;}
         
         .lobby-title { color: #ff9800; font-size: clamp(28px, 6vw, 38px); margin-top: 0; text-shadow: 2px 2px 0px #ffe0b2; margin-bottom: 15px;}
         .welcome-text { font-size: clamp(16px, 4vw, 20px); color: #333; margin-bottom: 15px; background: #fff3cd; padding: 12px; border-radius: 10px; border: 3px solid #ffeeba; word-break: keep-all;}
@@ -115,27 +166,22 @@
         .chat-log::-webkit-scrollbar-thumb { background: #8bc34a; border-radius: 4px; }
         .chat-input-area { display: flex; gap: 8px; }
         .chat-input-area input { flex: 1; margin: 0; font-size: 16px; padding: 8px; min-width: 0;}
-        .chat-action-btn { width: 70px; margin: 0; font-size: 15px; padding: 8px 4px; flex-shrink: 0;}
         
         .lobby-menu-group { display: flex; gap: 8px; margin-top: 15px; flex-wrap: nowrap; }
         .lobby-menu-group button { margin: 0; flex: 1; min-width: 0; padding: 10px 2px; }
         
-        /* 🔥 수정됨: PC 환경에서 아바타 컨테이너 기본 폭 확장 (130px) -> 한 줄에 표시되는 아바타 수 감소 */
         .avatar-list-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 20px; max-height: 380px; overflow-y: auto; overflow-x: hidden; padding: 10px; }
-        
         .avatar-item { border: 3px solid #eee; border-radius: 12px; padding: 10px; text-align: center; background-color: white; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; cursor: pointer; transition: transform 0.2s; }
         .avatar-item:hover { transform: scale(1.03); z-index: 1; }
         .avatar-item.selected, .online-user-item.selected { border-color: #ff9800; background-color: #fff3e0; box-shadow: 0 0 10px rgba(255,152,0,0.5); }
         .avatar-item img { max-width: 100%; height: auto; }
-        .buy-btn { width: 100%; padding: 8px 2px; font-size: clamp(12px, 3.5vw, 15px); margin: 8px 0 0 0; background-color: #17a2b8; border-color: #117a8b; box-shadow: 0 4px 0 #0f6674; border-radius: 8px;}
-        .buy-btn:active { transform: translateY(4px); box-shadow: 0 0 0 #0f6674; }
+        
         .owned-tag { font-size: 14px; color: #fff; background: #888; border-radius: 6px; padding: 4px 10px; margin-top: 8px; word-break: keep-all; }
         .gem-display { font-size: clamp(18px, 5vw, 24px); color: #d84315; background: #ffcc80; padding: 10px 20px; border-radius: 20px; display: inline-block; margin-bottom: 15px; border: 3px solid #ffb74d; box-shadow: 0 4px 0 #ff9800;}
 
         .controls-wrapper { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
         .gem-label { font-weight: bold; font-size: 15px; color: #1565c0; white-space: nowrap; }
         .gem-input { width: 45px; margin: 0; padding: 4px; font-size: 15px; text-align: center; border: 2px solid #90caf9; border-radius: 6px; }
-        .gem-action-btn, .hf-action-btn { margin: 0; padding: 6px 8px; font-size: clamp(13px, 3.5vw, 15px); width: auto; flex-shrink: 0; box-shadow: 0 4px 0; border-width: 2px; border-radius: 8px;}
         
         .hf-ready-text { font-size: clamp(9px, 2.5vw, 11px); letter-spacing: -0.5px; font-weight: bold; color: #888; margin-top: 5px; white-space: normal; word-break: keep-all; line-height: 1.1; width: 100%; box-sizing: border-box; padding: 0 2px; text-align: center; }
         .hf-ready-text.ready { color: #28a745; }
@@ -149,24 +195,24 @@
             button { 
                 padding: 10px 2px; 
                 border-width: 2px; 
-                border-radius: 8px; 
-                box-shadow: 0 4px 0 #004494;
+                box-shadow: 0 4px 0 var(--sh-color); /* 모바일 대형 버튼 4px 동기화 */
                 letter-spacing: -0.5px; 
                 font-size: clamp(13px, 3.5vw, 16px);
-                white-space: nowrap; 
             }
-            .bulk-btn { box-shadow: 0 4px 0 #155724 !important; }
-            .delete-btn { box-shadow: 0 4px 0 #8b1c24 !important; }
-            .secondary-btn { box-shadow: 0 4px 0 #3d4246 !important; }
-            .edit-btn { box-shadow: 0 3px 0 #155724 !important; }
+            button:active:not(:disabled):not(.btn-disabled) { transform: translateY(4px); }
             
-            button:active:not(:disabled) { transform: translateY(4px); }
+            .btn-sm {
+                padding: 5px 4px; 
+                border-width: 1px; 
+                box-shadow: 0 3px 0 var(--sh-color); /* 모바일 소형 버튼 3px 동기화 */
+            }
+            .btn-sm:active:not(:disabled):not(.btn-disabled) { transform: translateY(3px); }
+
             input { font-size: 16px; padding: 10px; border-width: 2px; margin: 8px 0;}
             
             .list-header { font-size: 13px; margin-bottom: 8px; padding-bottom: 5px; }
             .account-item { padding: 4px; gap: 4px; border-width: 1px; }
             .account-item input { font-size: 12px; padding: 6px; border-width: 1px; }
-            .account-item button { font-size: 12px; padding: 6px 2px; }
             
             .online-users-container { padding: 10px; border-width: 2px; max-height: 220px; }
             .online-users-header { flex-direction: column; align-items: stretch; gap: 8px; padding-bottom: 6px; }
@@ -188,7 +234,6 @@
             .lobby-menu-group { gap: 6px; margin-top: 10px; }
             .login-btn-group.row button { padding: 10px 2px; }
             
-            /* 🔥 수정됨: 모바일 환경에서 아바타 컨테이너 기본 폭 확장 (120px) */
             .avatar-list-container { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; padding: 8px; margin-bottom: 10px; max-height: 300px;}
             
             .avatar-item { padding: 8px; border-width: 2px; border-radius: 10px; }
@@ -197,7 +242,6 @@
             
             .gem-label { font-size: 13px; }
             .gem-input { font-size: 13px; width: 40px; padding: 3px; border-width: 1px;}
-            .gem-action-btn, .hf-action-btn { padding: 5px 4px; border-width: 1px; box-shadow: 0 3px 0;}
         }
     </style>
 </head>
@@ -207,8 +251,8 @@
         <div id="main-page" class="page active">
             <h2>🎮 로그인 화면</h2>
             <div class="login-btn-group">
-                <button onclick="showPage('student-page')">학생 로그인</button>
-                <button class="secondary-btn" onclick="showPage('admin-login-page')">관리자 로그인</button>
+                <button class="btn-blue" onclick="showPage('student-page')">학생 로그인</button>
+                <button class="btn-gray" onclick="showPage('admin-login-page')">관리자 로그인</button>
             </div>
         </div>
 
@@ -217,8 +261,8 @@
             <input type="text" id="student-id" class="login-input" placeholder="학생 아이디">
             <input type="password" id="student-pw" class="login-input" placeholder="학생 비밀번호">
             <div class="login-btn-group">
-                <button onclick="checkStudentLogin()">접속하기!</button>
-                <button class="secondary-btn" onclick="showPage('main-page')">처음으로</button>
+                <button class="btn-blue" onclick="checkStudentLogin()">접속하기!</button>
+                <button class="btn-gray" onclick="showPage('main-page')">처음으로</button>
             </div>
         </div>
         
@@ -227,7 +271,7 @@
             <p style="font-size: 16px; color: #555; word-break: keep-all;">대기실과 채팅창에서 사용할 멋진 별명을 입력하세요!</p>
             <input type="text" id="student-nickname" class="login-input" placeholder="별명 (최대 10자)" maxlength="10">
             <div class="login-btn-group">
-                <button onclick="enterLobbyWithNickname()">입장하기</button>
+                <button class="btn-blue" onclick="enterLobbyWithNickname()">입장하기</button>
             </div>
         </div>
 
@@ -236,19 +280,19 @@
             <input type="text" id="admin-id" class="login-input" placeholder="관리자 아이디">
             <input type="password" id="admin-pw" class="login-input" placeholder="관리자 비밀번호">
             <div class="login-btn-group">
-                <button onclick="checkAdminLogin()">로그인</button>
-                <button class="secondary-btn" onclick="showPage('main-page')">처음으로</button>
+                <button class="btn-blue" onclick="checkAdminLogin()">로그인</button>
+                <button class="btn-gray" onclick="showPage('main-page')">처음으로</button>
             </div>
         </div>
 
         <div id="admin-menu-page" class="page">
             <h2>🛠️ 관리자 메뉴</h2>
             <div class="login-btn-group">
-                <button onclick="enterAdminLobby()" style="background-color: #6f42c1; border-color:#59339d; box-shadow: 0 6px 0 #452679;">로비로 이동</button>
-                <button onclick="showPage('student-create-page')">학생 계정 생성</button>
-                <button onclick="showManagePage('admin-menu-page')">학생 계정 수정</button>
-                <button onclick="showAdminShopPage('admin-menu-page')" style="background-color: #ff9800; border-color:#e65100; box-shadow: 0 6px 0 #bf360c;">상점 관리</button>
-                <button class="secondary-btn" onclick="logoutStudent()">로그아웃</button>
+                <button class="btn-purple" onclick="enterAdminLobby()">로비로 이동</button>
+                <button class="btn-blue" onclick="showPage('student-create-page')">학생 계정 생성</button>
+                <button class="btn-blue" onclick="showManagePage('admin-menu-page')">학생 계정 수정</button>
+                <button class="btn-orange" onclick="showAdminShopPage('admin-menu-page')">상점 관리</button>
+                <button class="btn-gray" onclick="logoutStudent()">로그아웃</button>
             </div>
         </div>
 
@@ -257,10 +301,10 @@
             <input type="text" id="new-student-id" class="login-input" placeholder="생성할 아이디">
             <input type="password" id="new-student-pw" class="login-input" placeholder="생성할 비밀번호">
             <div class="login-btn-group">
-                <button onclick="createStudentAccount()">계정 생성</button>
-                <button class="bulk-btn" onclick="document.getElementById('excel-file-input').click()">엑셀로 일괄 생성</button>
+                <button class="btn-blue" onclick="createStudentAccount()">계정 생성</button>
+                <button class="btn-green" onclick="document.getElementById('excel-file-input').click()">엑셀로 일괄 생성</button>
                 <input type="file" id="excel-file-input" accept=".xlsx, .xls" style="display:none;" onchange="handleExcelUpload(event)">
-                <button class="secondary-btn" onclick="showPage('admin-menu-page')">이전으로</button>
+                <button class="btn-gray" onclick="showPage('admin-menu-page')">이전으로</button>
             </div>
         </div>
 
@@ -268,8 +312,8 @@
             <h2>학생 목록</h2>
             <div id="student-list" class="list-container"></div>
             <div class="login-btn-group row">
-                <button class="delete-btn" onclick="deleteAllAccounts()">전체 삭제</button>
-                <button class="secondary-btn" onclick="closeManagePage()">이전으로</button>
+                <button class="btn-red" onclick="deleteAllAccounts()">전체 삭제</button>
+                <button class="btn-gray" onclick="closeManagePage()">이전으로</button>
             </div>
         </div>
 
@@ -278,8 +322,8 @@
             <p style="font-size: 15px; color: #666; margin-bottom: 10px; word-break: keep-all;">✏️이름 / 💎가격을 수정하고 판매할 아바타를 클릭하세요!</p>
             <div id="admin-shop-list" class="avatar-list-container"></div>
             <div class="login-btn-group row">
-                <button class="bulk-btn" onclick="saveShopItems()">판매하기</button>
-                <button class="secondary-btn" onclick="closeAdminShopPage()">이전으로</button>
+                <button class="btn-green" onclick="saveShopItems()">판매하기</button>
+                <button class="btn-gray" onclick="closeAdminShopPage()">이전으로</button>
             </div>
         </div>
 
@@ -295,17 +339,17 @@
                         <span class="gem-label">보석</span>
                         <input type="number" id="gem-control-amount" value="1" min="1" class="gem-input">
                         <span class="gem-label">개</span>
-                        <button class="gem-action-btn" onclick="modifyGems('add')" style="background-color: #28a745; border-color:#1e7e34; box-shadow: 0 4px 0 #155724 !important;">✅ 지급</button>
-                        <button class="gem-action-btn" onclick="modifyGems('sub')" style="background-color: #dc3545; border-color:#bd2130; box-shadow: 0 4px 0 #8b1c24 !important;">⛔ 차감</button>
+                        <button class="btn-green btn-sm gem-action-btn" onclick="modifyGems('add')">✅ 지급</button>
+                        <button class="btn-red btn-sm gem-action-btn" onclick="modifyGems('sub')">⛔ 차감</button>
                     </div>
 
                     <div id="student-gem-controls" class="controls-wrapper" style="display: none;">
                         <span class="gem-label">보석</span>
                         <input type="number" id="student-gem-amount" value="1" min="1" class="gem-input">
                         <span class="gem-label">개</span>
-                        <button class="gem-action-btn" onclick="giftGems()" style="background-color: #28a745; border-color:#1e7e34; box-shadow: 0 4px 0 #155724 !important;">🎁 선물</button>
-                        <button class="gem-action-btn" onclick="requestGems()" style="background-color: #17a2b8; border-color:#117a8b; box-shadow: 0 4px 0 #0f6674 !important;">🙏 조르기</button>
-                        <button id="accept-request-btn" class="gem-action-btn" onclick="acceptGemRequest()" disabled style="background-color: #ccc; border-color:#999; box-shadow: 0 4px 0 #777 !important;">🤝 수락</button>
+                        <button class="btn-green btn-sm gem-action-btn" onclick="giftGems()">🎁 선물</button>
+                        <button class="btn-cyan btn-sm gem-action-btn" onclick="requestGems()">🙏 조르기</button>
+                        <button id="accept-request-btn" class="btn-disabled btn-sm gem-action-btn" onclick="acceptGemRequest()" disabled>🤝 수락</button>
                     </div>
                 </div>
                 <div id="online-users-list"></div>
@@ -315,22 +359,22 @@
                 <div class="chat-log" id="chat-log"></div>
                 <div class="chat-input-area">
                     <input type="text" id="chat-input" placeholder="채팅 입력!" onkeypress="if(event.key==='Enter') sendChat()">
-                    <button id="chat-send-btn" class="bulk-btn chat-action-btn" onclick="sendChat()">전송</button>
-                    <button id="admin-mute-btn" class="secondary-btn chat-action-btn" style="display: none;" onclick="toggleMute()">음소거</button>
-                    <button id="admin-chat-reset-btn" class="delete-btn chat-action-btn" style="display: none;" onclick="clearAllChat()">초기화</button>
+                    <button id="chat-send-btn" class="btn-green chat-action-btn" onclick="sendChat()">전송</button>
+                    <button id="admin-mute-btn" class="btn-gray chat-action-btn" style="display: none;" onclick="toggleMute()">음소거</button>
+                    <button id="admin-chat-reset-btn" class="btn-red chat-action-btn" style="display: none;" onclick="clearAllChat()">초기화</button>
                 </div>
             </div>
 
             <div class="lobby-menu-group">
-                <button id="shop-btn" onclick="showStudentShopPage()" style="background-color: #ff9800; border-color:#e65100; box-shadow: 0 6px 0 #bf360c !important;">아바타 상점</button>
-                <button id="storage-btn" onclick="showStoragePage()">내 보관함</button>
-                <button id="student-hf-btn" onclick="enterHighFiveRoom()" style="display: none; background-color: #e83e8c; border-color:#d3337a; box-shadow: 0 6px 0 #b12563 !important;">하이파이브</button>
-                <button id="student-logout-btn" class="secondary-btn" onclick="logoutStudent()">로그아웃</button>
+                <button id="shop-btn" class="btn-orange" onclick="showStudentShopPage()">아바타 상점</button>
+                <button id="storage-btn" class="btn-blue" onclick="showStoragePage()">내 보관함</button>
+                <button id="student-hf-btn" class="btn-pink" onclick="enterHighFiveRoom()" style="display: none;">하이파이브</button>
+                <button id="student-logout-btn" class="btn-gray" onclick="logoutStudent()">로그아웃</button>
                 
-                <button id="admin-shop-lobby-btn" onclick="showAdminShopPage('student-lobby-page')" style="display: none; background-color: #ff9800; border-color:#e65100; box-shadow: 0 6px 0 #bf360c !important;">상점 관리</button>
-                <button id="admin-manage-lobby-btn" onclick="showManagePage('student-lobby-page')" style="display: none;">학생 관리</button>
-                <button id="admin-hf-btn" onclick="enterHighFiveRoom()" style="display: none; background-color: #e83e8c; border-color:#d3337a; box-shadow: 0 6px 0 #b12563 !important;">하이파이브</button>
-                <button id="admin-back-lobby-btn" class="secondary-btn" onclick="showPage('admin-menu-page')" style="display: none;">이전으로</button>
+                <button id="admin-shop-lobby-btn" class="btn-orange" onclick="showAdminShopPage('student-lobby-page')" style="display: none;">상점 관리</button>
+                <button id="admin-manage-lobby-btn" class="btn-blue" onclick="showManagePage('student-lobby-page')" style="display: none;">학생 관리</button>
+                <button id="admin-hf-btn" class="btn-pink" onclick="enterHighFiveRoom()" style="display: none;">하이파이브</button>
+                <button id="admin-back-lobby-btn" class="btn-gray" onclick="showPage('admin-menu-page')" style="display: none;">이전으로</button>
             </div>
         </div>
 
@@ -339,7 +383,7 @@
             <div id="my-gems-display" class="gem-display">내 보석: 💎 0</div>
             <div id="student-shop-list" class="avatar-list-container"></div>
             <div class="login-btn-group row">
-                <button class="secondary-btn" onclick="showPage('student-lobby-page')">이전으로 돌아가기</button>
+                <button class="btn-gray" onclick="showPage('student-lobby-page')">이전으로 돌아가기</button>
             </div>
         </div>
 
@@ -348,8 +392,8 @@
             <p style="font-size: 16px; color: #555; margin-bottom:10px; word-break: keep-all;">장착할 아바타를 고르세요!</p>
             <div id="avatar-list" class="avatar-list-container"></div>
             <div class="login-btn-group row">
-                <button class="bulk-btn" onclick="applySelectedAvatar()">장착하기</button>
-                <button class="secondary-btn" onclick="showPage('student-lobby-page')">이전으로</button>
+                <button class="btn-green" onclick="applySelectedAvatar()">장착하기</button>
+                <button class="btn-gray" onclick="showPage('student-lobby-page')">이전으로</button>
             </div>
         </div>
 
@@ -360,8 +404,8 @@
                 <div class="online-users-header" style="border-bottom-color: #f48fb1;">
                     <div class="online-users-title" style="color: #d81b60;">대기실</div>
                     <div id="hf-controls" class="controls-wrapper">
-                        <button id="hf-request-btn" class="hf-action-btn" onclick="sendHighFiveRequest()" style="background-color: #17a2b8; border-color:#117a8b; box-shadow: 0 4px 0 #0f6674 !important;">하이?</button>
-                        <button id="hf-accept-btn" class="hf-action-btn" onclick="acceptHighFive()" disabled style="background-color: #ccc; border-color:#999; box-shadow: 0 4px 0 #777 !important; opacity: 0.5;">🤝 파이브!</button>
+                        <button id="hf-request-btn" class="btn-cyan btn-sm hf-action-btn" onclick="sendHighFiveRequest()">하이?</button>
+                        <button id="hf-accept-btn" class="btn-disabled btn-sm hf-action-btn" onclick="acceptHighFive()" disabled>🤝 파이브!</button>
                     </div>
                 </div>
                 <div id="hf-users-list"></div>
@@ -369,12 +413,12 @@
 
             <div class="login-btn-group row" style="margin-top: 15px;">
                 <div id="hf-admin-btn-group" style="display: none; width: 100%; gap: 10px;">
-                    <button id="hf-admin-start-btn" onclick="startHfGame()" style="background-color: #28a745; border-color: #1e7e34; box-shadow: 0 6px 0 #155724 !important; flex:1;">시작</button>
-                    <button class="secondary-btn" onclick="exitHighFiveRoom()" style="flex:1;">나가기</button>
+                    <button id="hf-admin-start-btn" class="btn-green" onclick="startHfGame()" style="flex:1;">시작</button>
+                    <button class="btn-gray" onclick="exitHighFiveRoom()" style="flex:1;">나가기</button>
                 </div>
                 <div id="hf-student-btn-group" style="display: none; width: 100%; gap: 10px;">
-                    <button id="hf-ready-btn" class="bulk-btn" onclick="toggleHfReady()" style="flex:1;">준비</button>
-                    <button id="hf-student-exit-btn" class="secondary-btn" onclick="exitHighFiveRoom()" style="flex:1;">나가기</button>
+                    <button id="hf-ready-btn" class="btn-green" onclick="toggleHfReady()" style="flex:1;">준비</button>
+                    <button id="hf-student-exit-btn" class="btn-gray" onclick="exitHighFiveRoom()" style="flex:1;">나가기</button>
                 </div>
             </div>
         </div>
@@ -423,7 +467,7 @@
         let selectedHfUser = null;
         const PAIR_COLORS = ['#ff9800', '#17a2b8', '#28a745', '#e83e8c', '#6f42c1', '#d84315', '#007bff', '#20c997'];
 
-        // 🔥 수정됨: 칸이 넓어졌으므로 폰트 사이즈를 조금 더 여유롭게 조절
+        // 이름 길이에 따른 동적 인라인 스타일 반환
         function getNameStyle(text) {
             const len = text ? text.length : 0;
             if (len <= 4) return 'font-size: 14px; letter-spacing: -0.5px;';
@@ -533,30 +577,22 @@
                     chatInput.disabled = true;
                     chatInput.placeholder = "관리자가 채팅을 금지했습니다 🤫";
                     chatSendBtn.disabled = true;
-                    chatSendBtn.style.backgroundColor = "#ccc";
-                    chatSendBtn.style.borderColor = "#999";
-                    chatSendBtn.style.boxShadow = "0 4px 0 #777";
+                    chatSendBtn.className = "btn-disabled chat-action-btn";
                 }
                 if (isAdmin && muteBtn) {
                     muteBtn.innerText = "음소거 해제";
-                    muteBtn.style.backgroundColor = "#dc3545"; 
-                    muteBtn.style.borderColor = "#bd2130";
-                    muteBtn.style.boxShadow = "0 4px 0 #8b1c24";
+                    muteBtn.className = "btn-red chat-action-btn";
                 }
             } else {
                 if (!isAdmin) {
                     chatInput.disabled = false;
                     chatInput.placeholder = "채팅 입력!";
                     chatSendBtn.disabled = false;
-                    chatSendBtn.style.backgroundColor = ""; 
-                    chatSendBtn.style.borderColor = "";
-                    chatSendBtn.style.boxShadow = "";
+                    chatSendBtn.className = "btn-green chat-action-btn";
                 }
                 if (isAdmin && muteBtn) {
                     muteBtn.innerText = "음소거";
-                    muteBtn.style.backgroundColor = ""; 
-                    muteBtn.style.borderColor = "";
-                    muteBtn.style.boxShadow = "";
+                    muteBtn.className = "btn-gray chat-action-btn";
                 }
             }
         });
@@ -581,15 +617,11 @@
                 const acceptBtn = document.getElementById('accept-request-btn');
                 if (pendingRequests.length > 0) {
                     acceptBtn.disabled = false;
-                    acceptBtn.style.backgroundColor = '#ff9800'; 
-                    acceptBtn.style.borderColor = '#e65100';
-                    acceptBtn.style.boxShadow = '0 4px 0 #bf360c !important';
+                    acceptBtn.className = "btn-orange gem-action-btn btn-sm";
                     acceptBtn.innerText = `🤝 수락 (${pendingRequests.length})`; 
                 } else {
                     acceptBtn.disabled = true;
-                    acceptBtn.style.backgroundColor = '#ccc';
-                    acceptBtn.style.borderColor = '#999';
-                    acceptBtn.style.boxShadow = '0 4px 0 #777 !important';
+                    acceptBtn.className = "btn-disabled gem-action-btn btn-sm";
                     acceptBtn.innerText = '🤝 수락';
                 }
 
@@ -744,8 +776,8 @@
                     <input type="text" value="${id}" readonly style="background:#eee;">
                     <input type="text" id="edit-nickname-${id}" value="${currentNick}" placeholder="별명" maxlength="10">
                     <input type="text" id="edit-pw-${id}" value="${account.pw}" placeholder="PW">
-                    <button class="edit-btn" onclick="updateAccount('${id}')">수정</button>
-                    <button class="delete-btn" onclick="deleteAccount('${id}')">삭제</button>
+                    <button class="btn-green btn-sm edit-btn" onclick="updateAccount('${id}')">수정</button>
+                    <button class="btn-red btn-sm edit-btn" onclick="deleteAccount('${id}')">삭제</button>
                 `;
                 listDiv.appendChild(itemDiv);
             });
@@ -794,7 +826,6 @@
                 const currentName = localShopNames[dbKey] || `아바타 ${index + 1}`;
                 const currentPrice = localShopPrices[dbKey] !== undefined ? localShopPrices[dbKey] : 1;
                 
-                // 🔥 수정됨: 인풋창의 넓이를 고정픽셀(px) 대신 flex:1 (비율)로 주어 아이콘과 겹치지 않게 조절
                 itemDiv.innerHTML = `
                     <img src="${avatarId}" alt="아바타">
                     <div id="view-name-mode-${index}" style="margin-top: 8px; display:flex; align-items:center; gap:4px; justify-content:center; width:100%;">
@@ -903,16 +934,12 @@
                 chatInput.disabled = true;
                 chatInput.placeholder = "관리자가 채팅을 금지했습니다 🤫";
                 chatSendBtn.disabled = true;
-                chatSendBtn.style.backgroundColor = "#ccc";
-                chatSendBtn.style.borderColor = "#999";
-                chatSendBtn.style.boxShadow = "0 6px 0 #777";
+                chatSendBtn.className = "btn-disabled chat-action-btn";
             } else {
                 chatInput.disabled = false;
                 chatInput.placeholder = "채팅 입력!";
                 chatSendBtn.disabled = false;
-                chatSendBtn.style.backgroundColor = ""; 
-                chatSendBtn.style.borderColor = "";
-                chatSendBtn.style.boxShadow = "";
+                chatSendBtn.className = "btn-green chat-action-btn";
             }
 
             showPage('student-lobby-page');
@@ -943,21 +970,15 @@
             document.getElementById('chat-input').disabled = false;
             document.getElementById('chat-input').placeholder = "채팅 입력!";
             document.getElementById('chat-send-btn').disabled = false;
-            document.getElementById('chat-send-btn').style.backgroundColor = ""; 
-            document.getElementById('chat-send-btn').style.borderColor = "";
-            document.getElementById('chat-send-btn').style.boxShadow = "";
+            document.getElementById('chat-send-btn').className = "btn-green chat-action-btn";
 
             const muteBtn = document.getElementById('admin-mute-btn');
             if (isChatMuted) {
                 muteBtn.innerText = "음소거 해제";
-                muteBtn.style.backgroundColor = "#dc3545"; 
-                muteBtn.style.borderColor = "#bd2130";
-                muteBtn.style.boxShadow = "0 6px 0 #8b1c24";
+                muteBtn.className = "btn-red chat-action-btn";
             } else {
                 muteBtn.innerText = "음소거";
-                muteBtn.style.backgroundColor = ""; 
-                muteBtn.style.borderColor = "";
-                muteBtn.style.boxShadow = "";
+                muteBtn.className = "btn-gray chat-action-btn";
             }
 
             selectedStudentsForGems = []; 
@@ -1291,7 +1312,7 @@
                 if (myOwnedAvatars.includes(avatarId)) {
                     itemDiv.innerHTML = `<img src="${avatarId}" alt="아바타" style="opacity: 0.5;">${nameText}<div class="owned-tag">보유 중</div>`;
                 } else {
-                    itemDiv.innerHTML = `<img src="${avatarId}" alt="아바타">${nameText}<button class="buy-btn" onclick="buyAvatar('${avatarId}')">💎 ${avatarPrice} 구입</button>`;
+                    itemDiv.innerHTML = `<img src="${avatarId}" alt="아바타">${nameText}<button class="btn-cyan btn-sm buy-btn" onclick="buyAvatar('${avatarId}')">💎 ${avatarPrice} 구입</button>`;
                 }
                 listDiv.appendChild(itemDiv);
             });
@@ -1457,14 +1478,10 @@
                     const myData = hfParticipants[currentUser] || {};
                     if (myData.status === 'ready') {
                         readyBtn.innerText = '취소';
-                        readyBtn.style.backgroundColor = '#dc3545';
-                        readyBtn.style.borderColor = '#bd2130';
-                        readyBtn.style.boxShadow = '0 6px 0 #8b1c24';
+                        readyBtn.className = "btn-red";
                     } else {
                         readyBtn.innerText = '준비';
-                        readyBtn.style.backgroundColor = '#28a745';
-                        readyBtn.style.borderColor = '#1e7e34';
-                        readyBtn.style.boxShadow = '0 6px 0 #155724';
+                        readyBtn.className = "btn-green";
                     }
                 }
             }
@@ -1480,15 +1497,11 @@
 
                 if (hfState.isStarted && requestCount > 0) {
                     acceptBtn.disabled = false;
-                    acceptBtn.style.backgroundColor = '#ff9800'; 
-                    acceptBtn.style.borderColor = '#e65100';
-                    acceptBtn.style.boxShadow = '0 4px 0 #bf360c !important';
+                    acceptBtn.className = "btn-orange hf-action-btn btn-sm";
                     acceptBtn.innerText = `🤝 파이브! (${requestCount})`; 
                 } else {
                     acceptBtn.disabled = true;
-                    acceptBtn.style.backgroundColor = '#ccc';
-                    acceptBtn.style.borderColor = '#999';
-                    acceptBtn.style.boxShadow = '0 4px 0 #777 !important';
+                    acceptBtn.className = "btn-disabled hf-action-btn btn-sm";
                     acceptBtn.innerText = '🤝 파이브!';
                 }
             }
@@ -1591,7 +1604,7 @@
             if (unPairedCount === 1) return alert('모든 매칭이 종료되었습니다.');
 
             if (!selectedHfUser) return alert('하이파이브 하고 싶은 친구를 선택하세요.');
-            if (selectedHfUser === currentUser) return alert('자신에게 요청할 수 없습니다.');
+            if (selectedHfUser === currentUser) return alert('자신에게 요청할 수 정할 수 없습니다.');
             if (hfParticipants[selectedHfUser]?.pairId != null) return alert('이미 짝이 된 친구입니다.');
 
             db.ref(`highfive/requests/${selectedHfUser}/${currentUser}`).set(Date.now());
