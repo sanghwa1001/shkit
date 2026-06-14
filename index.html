@@ -19,7 +19,7 @@
             justify-content: center; 
             align-items: center; 
             height: 100vh; 
-            height: 100dvh; /* 최신 모바일 브라우저 주소창 고려 완벽 중앙 정렬 */
+            height: 100dvh; 
             margin: 0; 
             background: linear-gradient(135deg, #74ebd5 0%, #9face6 100%); 
             padding: 15px; 
@@ -41,7 +41,7 @@
             overflow-y: auto; 
             overflow-x: hidden; 
             box-sizing: border-box; 
-            margin: 0; /* 강제로 위로 쏠리는 현상 방지 핵심 코드 */
+            margin: 0; 
         }
         .container::-webkit-scrollbar { width: 8px; }
         .container::-webkit-scrollbar-thumb { background: #bbb; border-radius: 4px; }
@@ -89,19 +89,20 @@
         .online-users-title { font-size: 20px; color: #1565c0; text-align: left; margin: 0; flex-shrink: 0;}
         
         #online-users-list { display: flex; flex-wrap: wrap; gap: 10px; padding-top: 5px; justify-content: flex-start; }
-        .online-user-item { position: relative; display: flex; flex-direction: column; align-items: center; font-size: 14px; color: #333; background: white; padding: 8px 3px; border-radius: 10px; border: 2px solid #bbdefb; box-shadow: 0 3px 0 #bbdefb; width: 68px; box-sizing: border-box;}
+        .online-user-item { position: relative; display: flex; flex-direction: column; align-items: center; font-size: 14px; color: #333; background: white; padding: 8px 3px; border-radius: 10px; border: 2px solid #bbdefb; box-shadow: 0 3px 0 #bbdefb; width: 82px; box-sizing: border-box;}
         .online-user-avatar { height: 50px; width: auto; margin-bottom: 6px; }
         
-        /* 닉네임 및 아바타 이름 전용 피팅 클래스 (말줄임표 제거) */
+        /* 닉네임 10글자 한줄 표시를 위한 강력한 피팅 클래스 */
         .name-text-fit {
             font-weight: bold;
             text-align: center;
-            white-space: nowrap;
-            overflow: visible; /* 자르지 않고 다 보여줌 */
+            white-space: nowrap !important;
+            overflow: visible !important; /* 절대 잘리지 않음 */
             display: block;
             width: 100%;
             margin-top: 2px;
-            font-size: 14px;
+            font-size: 12px;
+            letter-spacing: -0.5px;
             color: #333;
         }
 
@@ -145,12 +146,11 @@
             .container { padding: 15px; border-width: 3px; border-radius: 15px; max-height: 96dvh; margin: 0; }
             h2 { font-size: 24px; margin-bottom: 15px; }
             
-            /* 버튼: 줄바꿈 허용 안함 & 파란색 그림자 명시적 복구 */
             button { 
                 padding: 10px 2px; 
                 border-width: 2px; 
                 border-radius: 8px; 
-                box-shadow: 0 4px 0 #004494; /* 파란 버튼 그림자 복원 */
+                box-shadow: 0 4px 0 #004494;
                 letter-spacing: -0.5px; 
                 font-size: clamp(13px, 3.5vw, 16px);
                 white-space: nowrap; 
@@ -173,14 +173,14 @@
             .online-users-title { font-size: 18px; text-align: center; border-bottom: 1px dashed #90caf9; padding-bottom: 5px;}
             .controls-wrapper { justify-content: center; width: 100%; gap: 3px;}
             
-            /* 모바일 대기실 아바타 박스 폭 약간 넓힘 (텍스트 공간 확보) */
-            .online-user-item { width: 75px; padding: 6px 2px; border-width: 1px; }
+            /* 모바일 대기실 아바타 박스 폭 조정 (텍스트 공간 확보) */
+            .online-user-item { width: 78px; padding: 6px 2px; border-width: 1px; }
             .online-user-avatar { height: 45px; margin-bottom: 4px; }
             
-            /* 핵심: 10글자 무조건 보이게 폰트 대폭 축소 및 컷팅 방지 */
+            /* 10글자 한줄 표시 강제 (모바일) */
             .name-text-fit {
-                font-size: 8.5px !important; 
-                letter-spacing: -0.5px !important;
+                font-size: 9px !important; 
+                letter-spacing: -0.8px !important;
                 white-space: nowrap !important;
                 overflow: visible !important;
             }
@@ -232,7 +232,7 @@
         <div id="nickname-page" class="page">
             <h2>🏷️ 별명 설정</h2>
             <p style="font-size: 16px; color: #555; word-break: keep-all;">대기실과 채팅창에서 사용할 멋진 별명을 입력하세요!</p>
-            <input type="text" id="student-nickname" class="login-input" placeholder="별명 (최대 8자)" maxlength="8">
+            <input type="text" id="student-nickname" class="login-input" placeholder="별명 (최대 10자)" maxlength="10">
             <div class="login-btn-group">
                 <button onclick="enterLobbyWithNickname()">입장하기</button>
             </div>
@@ -403,6 +403,7 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
+        // 오직 gif 파일만 지원
         const DEFAULT_AVATARS = ['image_0.gif', 'image_1.gif'];
         const ALL_SHOP_AVATARS = ['1.gif', '2.gif', '3.gif', '4.gif', '5.gif', '6.gif', '7.gif', '8.gif', '9.gif', '10.gif'];
         
@@ -449,8 +450,7 @@
         });
 
         db.ref('shopItems').on('value', (snapshot) => {
-            let items = snapshot.val() || [];
-            localShopItems = items.map(id => id.replace('.png', '.gif')); 
+            localShopItems = snapshot.val() || [];
             if (document.getElementById('admin-shop-page').classList.contains('active')) renderAdminShopPage();
             if (document.getElementById('student-shop-page').classList.contains('active')) renderStudentShop();
         });
@@ -607,7 +607,6 @@
                     req.isDeleting = true; 
                     db.ref(`gemRequests/${currentUser}/${req.key}`).remove().then(() => {
                         const requesterNick = localStudentAccounts[req.from]?.nickname || req.from;
-                        const myNick = localStudentAccounts[currentUser]?.nickname || currentUser;
                         db.ref('chatLog').push().set({
                             sender: 'system',
                             message: `${requesterNick}이(가) 보낸 조르기가 취소되었습니다. ⏳`,
@@ -657,28 +656,11 @@
                 
                 let fixedOwned = account.ownedAvatars || DEFAULT_AVATARS;
                 let fixedAvatar = account.avatarId || DEFAULT_AVATARS[0];
-                let needsUpdate = false;
-
-                if (fixedOwned.some(a => a.includes('.png'))) {
-                    fixedOwned = fixedOwned.map(a => a.replace('.png', '.gif'));
-                    needsUpdate = true;
-                }
-                if (fixedAvatar.includes('.png')) {
-                    fixedAvatar = fixedAvatar.replace('.png', '.gif');
-                    needsUpdate = true;
-                }
 
                 myCurrentAvatar = fixedAvatar;
                 
-                let updates = {};
-                if (needsUpdate) {
-                    updates.ownedAvatars = fixedOwned;
-                    updates.avatarId = fixedAvatar;
-                }
-                if (account.gems === undefined) updates.gems = 10;
-                
-                if (Object.keys(updates).length > 0) {
-                    db.ref('studentAccounts/' + currentUser).update(updates);
+                if (account.gems === undefined) {
+                    db.ref('studentAccounts/' + currentUser).update({ gems: 10 });
                 }
                 
                 document.getElementById('student-nickname').value = account.nickname || inputId;
@@ -758,7 +740,7 @@
                 itemDiv.className = 'account-item';
                 itemDiv.innerHTML = `
                     <input type="text" value="${id}" readonly style="background:#eee;">
-                    <input type="text" id="edit-nickname-${id}" value="${currentNick}" placeholder="별명">
+                    <input type="text" id="edit-nickname-${id}" value="${currentNick}" placeholder="별명" maxlength="10">
                     <input type="text" id="edit-pw-${id}" value="${account.pw}" placeholder="PW">
                     <button class="edit-btn" onclick="updateAccount('${id}')">수정</button>
                     <button class="delete-btn" onclick="deleteAccount('${id}')">삭제</button>
@@ -769,7 +751,7 @@
 
         function updateAccount(id) {
             const newPw = document.getElementById(`edit-pw-${id}`).value.trim();
-            const newNick = document.getElementById(`edit-nickname-${id}`).value.trim();
+            const newNick = document.getElementById(`edit-nickname-${id}`).value.trim().substring(0, 10);
             if (newPw === '') return alert('비밀번호를 입력해주세요.');
             
             db.ref('studentAccounts/' + id).update({ pw: newPw, nickname: newNick });
@@ -806,10 +788,9 @@
                 if (tempShopItems.includes(avatarId)) itemDiv.classList.add('selected');
 
                 const dbKey = avatarId.replace('.', '_'); 
-                const fallbackKey = avatarId.split('.')[0] + '_png';
                 
-                const currentName = localShopNames[dbKey] || localShopNames[fallbackKey] || `아바타 ${index + 1}`;
-                const currentPrice = localShopPrices[dbKey] !== undefined ? localShopPrices[dbKey] : (localShopPrices[fallbackKey] !== undefined ? localShopPrices[fallbackKey] : 1);
+                const currentName = localShopNames[dbKey] || `아바타 ${index + 1}`;
+                const currentPrice = localShopPrices[dbKey] !== undefined ? localShopPrices[dbKey] : 1;
                 
                 itemDiv.innerHTML = `
                     <img src="${avatarId}" alt="아바타">
@@ -885,7 +866,7 @@
         
         function enterLobbyWithNickname() {
             const nicknameInput = document.getElementById('student-nickname').value.trim();
-            const finalNickname = nicknameInput === '' ? currentUser : nicknameInput;
+            const finalNickname = (nicknameInput === '' ? currentUser : nicknameInput).substring(0, 10);
 
             db.ref('studentAccounts/' + currentUser).update({ nickname: finalNickname });
             document.getElementById('welcome-message').innerText = `환영합니다, ${finalNickname}님! ✨`;
@@ -1280,7 +1261,7 @@
                 let displayId = user.nickname || id;
                 const isMe = (id === currentUser) ? '<span style="color: #ff9800; margin-left:2px;">(나)</span>' : '';
                 
-                let avatarSrc = (user.avatarId || 'image_0.gif').replace('.png', '.gif');
+                let avatarSrc = user.avatarId || 'image_0.gif';
                 userDiv.innerHTML = `${requestBadge}${bubbleHTML}<img src="${avatarSrc}" alt="아바타" class="online-user-avatar"><div style="display:flex; flex-direction:column; width:100%;"><span class="name-text-fit">${displayId}</span><span style="font-size:10px; color:#ff9800; margin-top:2px;">${(id === currentUser) ? '(나)' : ''}</span></div>`;
                 listDiv.appendChild(userDiv);
             });
@@ -1298,11 +1279,10 @@
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'avatar-item';
                 const dbKey = avatarId.replace('.', '_');
-                const fallbackKey = avatarId.split('.')[0] + '_png';
                 
-                const avatarName = localShopNames[dbKey] || localShopNames[fallbackKey] || `${avatarId.split('.')[0]}번 아바타`;
+                const avatarName = localShopNames[dbKey] || `${avatarId.split('.')[0]}번 아바타`;
                 const nameText = `<span class="name-text-fit">${avatarName}</span>`;
-                const avatarPrice = localShopPrices[dbKey] !== undefined ? localShopPrices[dbKey] : (localShopPrices[fallbackKey] !== undefined ? localShopPrices[fallbackKey] : 1);
+                const avatarPrice = localShopPrices[dbKey] !== undefined ? localShopPrices[dbKey] : 1;
                 
                 if (myOwnedAvatars.includes(avatarId)) {
                     itemDiv.innerHTML = `<img src="${avatarId}" alt="아바타" style="opacity: 0.5;">${nameText}<div class="owned-tag">보유 중</div>`;
@@ -1315,8 +1295,7 @@
 
         function buyAvatar(avatarId) {
             const dbKey = avatarId.replace('.', '_');
-            const fallbackKey = avatarId.split('.')[0] + '_png';
-            const price = localShopPrices[dbKey] !== undefined ? localShopPrices[dbKey] : (localShopPrices[fallbackKey] !== undefined ? localShopPrices[fallbackKey] : 1);
+            const price = localShopPrices[dbKey] !== undefined ? localShopPrices[dbKey] : 1;
             
             let myOwnedAvatars = localStudentAccounts[currentUser]?.ownedAvatars || DEFAULT_AVATARS;
             let myGems = localStudentAccounts[currentUser]?.gems || 0;
@@ -1346,11 +1325,9 @@
                 };
 
                 const dbKey = avatarId.replace('.', '_');
-                const fallbackKey = avatarId.split('.')[0] + '_png';
-                let avatarName = (avatarId === 'image_0.gif' || avatarId === 'image_0.png') ? '기본 남자' : (avatarId === 'image_1.gif' || avatarId === 'image_1.png') ? '기본 여자' : (localShopNames[dbKey] || localShopNames[fallbackKey] || `${avatarId.split('.')[0]}번 아바타`);
+                let avatarName = (avatarId === 'image_0.gif') ? '기본 남자' : (avatarId === 'image_1.gif') ? '기본 여자' : (localShopNames[dbKey] || `${avatarId.split('.')[0]}번 아바타`);
                 
-                let avatarSrc = avatarId.replace('.png', '.gif');
-                avatarDiv.innerHTML = `<img src="${avatarSrc}" alt="아바타"><p class="name-text-fit" style="margin-bottom:0;">${avatarName}</p>`;
+                avatarDiv.innerHTML = `<img src="${avatarId}" alt="아바타"><p class="name-text-fit" style="margin-bottom:0;">${avatarName}</p>`;
                 listDiv.appendChild(avatarDiv);
             });
         }
@@ -1536,13 +1513,13 @@
                 const isOffline = data.isOnline === false;
                 const isFailedUser = isFailureState && !userIsPaired && !isOffline;
                 
-                let avatarSrc = (realAcc.avatarId || 'image_0.gif').replace('.png', '.gif');
+                let avatarSrc = realAcc.avatarId || 'image_0.gif';
                 let displayName = realAcc.nickname || id;
                 let statusTextHtml = '';
                 
                 if (hfState.isStarted && !userIsPaired) {
                     if (isFailedUser) {
-                        avatarSrc = (realAcc.avatarId || 'image_0.gif').replace('.png', '.gif');
+                        avatarSrc = realAcc.avatarId || 'image_0.gif';
                         displayName = realAcc.nickname || id;
                     } else {
                         avatarSrc = 'unknown.gif'; 
