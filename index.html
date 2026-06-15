@@ -141,11 +141,9 @@
         
         #online-users-list, #hf-users-list { display: flex; flex-wrap: wrap; gap: 10px; padding-top: 5px; justify-content: flex-start; }
         
-        /* 🔥 패치됨: PC 아바타 박스 및 이미지 크기 시원하게 확대 */
-        .online-user-item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; font-size: 14px; color: #333; background: white; padding: 10px 4px; border-radius: 12px; border: 2px solid #bbdefb; box-shadow: 0 3px 0 #bbdefb; width: 105px; height: 135px; box-sizing: border-box;}
-        .online-user-avatar { height: 60px; width: auto; margin-bottom: 8px; }
+        .online-user-item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; font-size: 14px; color: #333; background: white; padding: 10px 4px; border-radius: 12px; border: 2px solid #bbdefb; box-shadow: 0 3px 0 #bbdefb; width: 105px; height: 145px; box-sizing: border-box;}
+        .online-user-avatar { height: 75px; width: auto; margin-bottom: 4px; }
         
-        /* 🔥 패치됨: 글자 수별 동적 폰트 크기 (PC 기본값) */
         .name-text-fit {
             font-weight: bold; text-align: center; white-space: nowrap !important;
             overflow: hidden !important; text-overflow: clip !important; 
@@ -216,11 +214,9 @@
             .online-users-title { font-size: 18px; text-align: center; border-bottom: 1px dashed #90caf9; padding-bottom: 5px;}
             .controls-wrapper { justify-content: center; width: 100%; gap: 3px;}
             
-            /* 모바일 최적화 비율 유지 */
-            .online-user-item { width: 88px; height: 110px; padding: 6px 2px; border-width: 1px; }
-            .online-user-avatar { height: 45px; margin-bottom: 4px; }
+            .online-user-item { width: 88px; height: 115px; padding: 6px 2px; border-width: 1px; }
+            .online-user-avatar { height: 55px; margin-bottom: 2px; }
             
-            /* 🔥 패치됨: 모바일에서 글자 수별 동적 폰트 크기 재정의 */
             .name-sm { font-size: 14px; letter-spacing: -0.5px; }
             .name-md { font-size: 13px; letter-spacing: -0.5px; }
             .name-lg { font-size: 11.5px; letter-spacing: -0.5px; }
@@ -445,7 +441,6 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // 오직 gif 파일만 지원
         const DEFAULT_AVATARS = ['image_0.gif', 'image_1.gif'];
         const ALL_SHOP_AVATARS = ['1.gif', '2.gif', '3.gif', '4.gif', '5.gif', '6.gif', '7.gif', '8.gif', '9.gif', '10.gif'];
         
@@ -472,7 +467,6 @@
         let selectedHfUser = null;
         const PAIR_COLORS = ['#ff9800', '#17a2b8', '#28a745', '#e83e8c', '#6f42c1', '#d84315', '#007bff', '#20c997'];
 
-        // 🔥 패치됨: JS에서 CSS 클래스 이름을 반환하도록 분리
         function getNameClass(text) {
             const len = text ? text.length : 0;
             if (len <= 4) return 'name-sm';
@@ -831,7 +825,6 @@
                 const currentName = localShopNames[dbKey] || `아바타 ${index + 1}`;
                 const currentPrice = localShopPrices[dbKey] !== undefined ? localShopPrices[dbKey] : 1;
                 
-                // 🔥 패치됨: 인라인 스타일 대신 클래스 호출 적용
                 itemDiv.innerHTML = `
                     <img src="${avatarId}" alt="아바타">
                     <div id="view-name-mode-${index}" style="margin-top: 8px; display:flex; align-items:center; gap:4px; justify-content:center; width:100%;">
@@ -1294,7 +1287,6 @@
                 
                 let avatarSrc = user.avatarId || 'image_0.gif';
                 
-                // 🔥 패치됨: 인라인 스타일 대신 동적 CSS 클래스 적용
                 userDiv.innerHTML = `${requestBadge}${bubbleHTML}<img src="${avatarSrc}" alt="아바타" class="online-user-avatar"><div style="display:flex; flex-direction:column; width:100%; flex: 1; justify-content: flex-end;"><span class="name-text-fit ${getNameClass(displayId)}">${displayId}</span><span style="font-size:10px; color:#ff9800; font-weight:bold; min-height:12px; line-height:1; margin-bottom:2px;">${(isMe) ? '(나)' : ''}</span></div>`;
                 listDiv.appendChild(userDiv);
             });
@@ -1314,10 +1306,8 @@
                 const dbKey = avatarId.replace('.', '_');
                 
                 const avatarName = localShopNames[dbKey] || `${avatarId.split('.')[0]}번 아바타`;
-                const avatarPrice = localShopPrices[dbKey] !== undefined ? localShopPrices[dbKey] : 1;
-                
-                // 🔥 패치됨: 인라인 스타일 대신 동적 CSS 클래스 적용
                 const nameText = `<span class="name-text-fit ${getNameClass(avatarName)}">${avatarName}</span>`;
+                const avatarPrice = localShopPrices[dbKey] !== undefined ? localShopPrices[dbKey] : 1;
                 
                 if (myOwnedAvatars.includes(avatarId)) {
                     itemDiv.innerHTML = `<img src="${avatarId}" alt="아바타" style="opacity: 0.5;">${nameText}<div class="owned-tag">보유 중</div>`;
@@ -1362,7 +1352,6 @@
                 const dbKey = avatarId.replace('.', '_');
                 let avatarName = (avatarId === 'image_0.gif') ? '기본 남자' : (avatarId === 'image_1.gif') ? '기본 여자' : (localShopNames[dbKey] || `${avatarId.split('.')[0]}번 아바타`);
                 
-                // 🔥 패치됨: 인라인 스타일 대신 동적 CSS 클래스 적용
                 avatarDiv.innerHTML = `<img src="${avatarId}" alt="아바타"><p class="name-text-fit ${getNameClass(avatarName)}" style="margin-bottom:0;">${avatarName}</p>`;
                 listDiv.appendChild(avatarDiv);
             });
@@ -1599,7 +1588,6 @@
                     userDiv.onclick = () => { selectedHfUser = id; renderHighFiveRoom(); };
                 }
 
-                // 🔥 패치됨: 인라인 스타일 대신 동적 CSS 클래스 적용
                 userDiv.innerHTML = `${badgeHtml}<img src="${avatarSrc}" alt="아바타" class="online-user-avatar"><div style="display:flex; flex-direction:column; width:100%; flex: 1; justify-content: flex-end;"><span class="name-text-fit ${getNameClass(displayName)}">${displayName}</span><span style="font-size:10px; color:#ff9800; font-weight:bold; min-height:12px; line-height:1; margin-bottom:2px;">${(isMe) ? '(나)' : ''}</span></div>${statusTextHtml}`;
                 listDiv.appendChild(userDiv);
             });
@@ -1642,6 +1630,16 @@
             if (!myRequests[selectedHfUser]) return alert('선택한 친구에게서 온 요청이 없습니다.');
 
             const targetId = selectedHfUser; 
+            
+            // 상대방이 이미 짝이 있는지 확인
+            const targetData = hfParticipants[targetId];
+            if (targetData?.pairId != null) {
+                alert('앗! 상대방이 이미 다른 친구와 하이파이브를 완료했습니다. 😥');
+                db.ref(`highfive/requests/${currentUser}/${targetId}`).remove(); // 무효화된 요청 삭제
+                selectedHfUser = null;
+                renderHighFiveRoom();
+                return;
+            }
             
             const nextPairId = hfState.pairCount + 1;
             const pairColor = PAIR_COLORS[nextPairId % PAIR_COLORS.length];
