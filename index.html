@@ -141,7 +141,9 @@
         .online-users-title { font-size: 20px; color: #1565c0; text-align: left; margin: 0; flex-shrink: 0;}
         
         #online-users-list, #hf-users-list { display: flex; flex-wrap: wrap; gap: 10px; padding-top: 5px; justify-content: flex-start; }
-        .online-user-item { position: relative; display: flex; flex-direction: column; align-items: center; font-size: 14px; color: #333; background: white; padding: 8px 3px; border-radius: 10px; border: 2px solid #bbdefb; box-shadow: 0 3px 0 #bbdefb; width: 82px; box-sizing: border-box;}
+        
+        /* 🔥 패치됨: 아바타 칸 크기를 늘리고 높이를 고정하여 하단 텍스트 완벽 정렬 */
+        .online-user-item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; font-size: 14px; color: #333; background: white; padding: 8px 3px; border-radius: 10px; border: 2px solid #bbdefb; box-shadow: 0 3px 0 #bbdefb; width: 96px; height: 120px; box-sizing: border-box;}
         .online-user-avatar { height: 50px; width: auto; margin-bottom: 6px; }
         
         .name-text-fit {
@@ -152,7 +154,6 @@
             text-overflow: clip !important; 
             display: block;
             width: 100%;
-            margin-top: 2px;
             color: #333;
         }
 
@@ -183,7 +184,8 @@
         .gem-label { font-weight: bold; font-size: 15px; color: #1565c0; white-space: nowrap; }
         .gem-input { width: 45px; margin: 0; padding: 4px; font-size: 15px; text-align: center; border: 2px solid #90caf9; border-radius: 6px; }
         
-        .hf-ready-text { font-size: clamp(9px, 2.5vw, 11px); letter-spacing: -0.5px; font-weight: bold; color: #888; margin-top: 5px; white-space: normal; word-break: keep-all; line-height: 1.1; width: 100%; box-sizing: border-box; padding: 0 2px; text-align: center; }
+        /* 🔥 패치됨: 하이파이브 상태 텍스트를 항상 박스 맨 하단에 고정 */
+        .hf-ready-text { font-size: clamp(9px, 2.5vw, 11px); letter-spacing: -0.5px; font-weight: bold; color: #888; margin-top: auto; margin-bottom: 2px; white-space: normal; word-break: keep-all; line-height: 1.1; width: 100%; box-sizing: border-box; padding: 0 2px; text-align: center; }
         .hf-ready-text.ready { color: #28a745; }
         .hf-badge { position: absolute; top: -10px; right: -10px; background: #ff9800; border: 2px solid #fff; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.3); font-size: 12px; z-index: 10; animation: bounceBadge 0.8s infinite; }
 
@@ -224,7 +226,8 @@
             .online-users-title { font-size: 18px; text-align: center; border-bottom: 1px dashed #90caf9; padding-bottom: 5px;}
             .controls-wrapper { justify-content: center; width: 100%; gap: 3px;}
             
-            .online-user-item { width: 78px; padding: 6px 2px; border-width: 1px; }
+            /* 🔥 패치됨: 모바일 아바타 박스 크기 확장 및 높이 고정 */
+            .online-user-item { width: 88px; height: 110px; padding: 6px 2px; border-width: 1px; }
             .online-user-avatar { height: 45px; margin-bottom: 4px; }
             
             .speech-bubble { font-size: 11px; padding: 4px 6px; top: -32px; border-width: 1px; box-shadow: 0 2px 0 rgba(255,152,0,0.5);}
@@ -471,13 +474,13 @@
         let selectedHfUser = null;
         const PAIR_COLORS = ['#ff9800', '#17a2b8', '#28a745', '#e83e8c', '#6f42c1', '#d84315', '#007bff', '#20c997'];
 
-        // 🔥 수정됨: 10자가 완전히 들어가도록 8px 및 -1px로 여유를 줌
+        // 🔥 패치됨: 넓어진 칸에 맞춰 가독성을 위해 폰트 및 자간 재조정
         function getNameStyle(text) {
             const len = text ? text.length : 0;
-            if (len <= 4) return 'font-size: 13px; letter-spacing: -0.5px;';
-            if (len <= 6) return 'font-size: 11px; letter-spacing: -0.5px;';
-            if (len <= 8) return 'font-size: 9.5px; letter-spacing: -0.8px;';
-            return 'font-size: 8px; letter-spacing: -1px;';
+            if (len <= 4) return 'font-size: 14px; letter-spacing: -0.5px;';
+            if (len <= 6) return 'font-size: 13px; letter-spacing: -0.5px;';
+            if (len <= 8) return 'font-size: 11.5px; letter-spacing: -0.5px;';
+            return 'font-size: 10.5px; letter-spacing: -0.5px;';
         }
 
         function shuffleArray(array) {
@@ -1051,7 +1054,7 @@
         }
 
         function clearAllChat() {
-            if (confirm('🚨 모든 학생의 채팅 기록을 초기화하시겠습니까?\n이 작업은 되돌릴 수 테없습니다.')) {
+            if (confirm('🚨 모든 학생의 채팅 기록을 초기화하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) {
                 db.ref('chatLog').remove()
                     .then(() => alert('채팅 기록이 깔끔하게 지워졌습니다.'))
                     .catch((error) => alert('초기화 중 오류가 발생했습니다.'));
@@ -1291,7 +1294,9 @@
                 const isMe = (id === currentUser) ? '<span style="color: #ff9800; margin-left:2px;">(나)</span>' : '';
                 
                 let avatarSrc = user.avatarId || 'image_0.gif';
-                userDiv.innerHTML = `${requestBadge}${bubbleHTML}<img src="${avatarSrc}" alt="아바타" class="online-user-avatar"><div style="display:flex; flex-direction:column; width:100%;"><span class="name-text-fit" style="${getNameStyle(displayId)}">${displayId}</span><span style="font-size:10px; color:#ff9800; margin-top:2px;">${(id === currentUser) ? '(나)' : ''}</span></div>`;
+                
+                // 🔥 패치됨: 텍스트 래퍼에 flex: 1을 주어 공간을 채우게 설정
+                userDiv.innerHTML = `${requestBadge}${bubbleHTML}<img src="${avatarSrc}" alt="아바타" class="online-user-avatar"><div style="display:flex; flex-direction:column; width:100%; flex: 1; justify-content: center;"><span class="name-text-fit" style="${getNameStyle(displayId)}">${displayId}</span><span style="font-size:10px; color:#ff9800; font-weight:bold; min-height:12px; line-height:1;">${(id === currentUser) ? '(나)' : ''}</span></div>`;
                 listDiv.appendChild(userDiv);
             });
         }
@@ -1316,7 +1321,7 @@
                 if (myOwnedAvatars.includes(avatarId)) {
                     itemDiv.innerHTML = `<img src="${avatarId}" alt="아바타" style="opacity: 0.5;">${nameText}<div class="owned-tag">보유 중</div>`;
                 } else {
-                    itemDiv.innerHTML = `<img src="${avatarId}" alt="아바타">${nameText}<button class="btn-cyan btn-sm buy-btn" onclick="buyAvatar('${avatarId}')">💎 ${avatarPrice} 구입</button>`;
+                    itemDiv.innerHTML = `<img src="${avatarId}" alt="아바타">${nameText}<button class="btn-cyan buy-btn" style="padding: 8px 2px; font-size: clamp(12px, 3.5vw, 15px); border-radius: 8px;" onclick="buyAvatar('${avatarId}')">💎 ${avatarPrice} 구입</button>`;
                 }
                 listDiv.appendChild(itemDiv);
             });
@@ -1590,7 +1595,8 @@
                     userDiv.onclick = () => { selectedHfUser = id; renderHighFiveRoom(); };
                 }
 
-                userDiv.innerHTML = `${badgeHtml}<img src="${avatarSrc}" alt="아바타" class="online-user-avatar"><div style="display:flex; flex-direction:column; width:100%;"><span class="name-text-fit" style="${getNameStyle(displayName)}">${displayName}</span><span style="font-size:10px; color:#ff9800; font-weight:bold; height:12px;">${(isMe) ? '(나)' : ''}</span></div>${statusTextHtml}`;
+                // 🔥 패치됨: 텍스트 래퍼에 flex: 1을 주고, hf-ready-text가 하단에 고정되도록 설정됨
+                userDiv.innerHTML = `${badgeHtml}<img src="${avatarSrc}" alt="아바타" class="online-user-avatar"><div style="display:flex; flex-direction:column; width:100%; flex: 1; justify-content: center;"><span class="name-text-fit" style="${getNameStyle(displayName)}">${displayName}</span><span style="font-size:10px; color:#ff9800; font-weight:bold; min-height:12px; line-height:1;">${(isMe) ? '(나)' : ''}</span></div>${statusTextHtml}`;
                 listDiv.appendChild(userDiv);
             });
         }
