@@ -1,4 +1,3 @@
-// 파이어베이스 데이터베이스 구성 정보 설정
 const firebaseConfig = {
     apiKey: "AIzaSyAs5o4rlC1-bhA4J0P8LXp54CzDQ_aRNCo",
     authDomain: "shkit-300c7.firebaseapp.com",
@@ -43,7 +42,6 @@ let waveParticipants = {};
 let waveState = { isOpen: false, isStarted: false, shuffledIds: [] };
 let waveClicks = {}; 
 
-// 학습 데이터 및 게임 제어 변수
 let localStudyData = {};
 let selectedStudyDataKey = null; 
 let currentStudyMode = 'solo';   
@@ -64,37 +62,31 @@ function shuffleArray(array) {
     return array;
 }
 
-// ----------------- DB Listeners -----------------
 db.ref('studentAccounts').on('value', (snapshot) => {
     localStudentAccounts = snapshot.val() || {};
     if (document.getElementById('student-manage-page').classList.contains('active')) renderStudentList();
     if (document.getElementById('student-shop-page').classList.contains('active')) renderStudentShop();
 });
-
 db.ref('onlineUsers').on('value', (snapshot) => {
     localOnlineUsers = snapshot.val() || {};
     if (document.getElementById('student-lobby-page').classList.contains('active')) renderOnlineUsers();
 });
-
 db.ref('shopItems').on('value', (snapshot) => {
     localShopItems = snapshot.val() || [];
     if (document.getElementById('admin-shop-page').classList.contains('active')) renderAdminShopPage();
     if (document.getElementById('student-shop-page').classList.contains('active')) renderStudentShop();
 });
-
 db.ref('shopItemNames').on('value', (snapshot) => {
     localShopNames = snapshot.val() || {};
     if (document.getElementById('admin-shop-page').classList.contains('active')) renderAdminShopPage();
     if (document.getElementById('student-shop-page').classList.contains('active')) renderStudentShop();
     if (document.getElementById('storage-page').classList.contains('active')) renderAvatarList();
 });
-
 db.ref('shopItemPrices').on('value', (snapshot) => {
     localShopPrices = snapshot.val() || {};
     if (document.getElementById('admin-shop-page').classList.contains('active')) renderAdminShopPage();
     if (document.getElementById('student-shop-page').classList.contains('active')) renderStudentShop();
 });
-
 db.ref('studyData').on('value', (snapshot) => {
     localStudyData = snapshot.val() || {};
     if (document.getElementById('admin-study-manage-page').classList.contains('active')) renderStudyDataList();
@@ -186,7 +178,6 @@ db.ref('chatState/isMuted').on('value', (snapshot) => {
     }
 });
 
-// ----------------- Core Functions -----------------
 function listenForGemRequests() {
     db.ref(`gemRequests/${currentUser}`).on('value', snapshot => {
         const reqs = snapshot.val();
@@ -794,8 +785,6 @@ function renderAvatarList() {
     });
 }
 
-// ----------------- HighFive -----------------
-// ... (기존 하이파이브 함수 유지)
 function enterHighFiveRoom() {
     if (isAdmin) db.ref('highfive/state/isOpen').set(true);
     else {
@@ -967,8 +956,6 @@ function acceptHighFive() {
     });
 }
 
-// ----------------- Wave -----------------
-// ... (기존 파도타기 함수 유지)
 function enterWaveRoom() {
     if (isAdmin) db.ref('wave/state/isOpen').set(true);
     else {
@@ -1084,7 +1071,6 @@ function renderWaveRoom() {
     });
 }
 
-// ----------------- 에듀테크 학습 & 데이터 관리 제어 -----------------
 function handleStudyExcelUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -1169,10 +1155,6 @@ function deleteStudyData(key) {
     }
 }
 
-// ===============================================
-// 학습 데이터 선택
-// ===============================================
-
 function showStudyDataSelectPage(mode) {
     currentStudyMode = mode; renderStudentStudyDataList(); showPage('student-study-data-select-page');
 }
@@ -1216,17 +1198,13 @@ function prepareSangtiRun() {
     
     if (platformWords.length === 0) { alert('선택한 단어장에 등록된 데이터가 없습니다!'); return; }
 
-    // 플랫폼의 {en, kr} 데이터를 상티런 포맷 {eng, kor}으로 맵핑
     srWords = platformWords.map(w => ({ eng: w.en, kor: w.kr }));
-    
     showPage('sangti-run-page');
     startSangtiRunGame();
 }
 
-
 // ===============================================
-// 상티런 1.0 엔진 통합 스크립트
-// (변수명 충돌 방지를 위해 sr_ 접두사 사용)
+// 상티런 1.0 엔진 통합 스크립트 (가로/세로 하이브리드 대응 추가)
 // ===============================================
 
 let srWords = [];
@@ -1258,7 +1236,6 @@ let srTimeLeft = 60;
 const SR_MAX_TIME = 60; 
 let srTimerInterval;
 
-// 키보드, 터치, 마우스 입력 바인딩
 document.addEventListener("keydown", e => {
     if (e.code === "Space" && document.getElementById('sangti-run-page').classList.contains('active')) {
         e.preventDefault(); srIsPressing = true;
@@ -1275,6 +1252,17 @@ document.addEventListener("touchstart", (e) => {
     }
 }, { passive: false });
 document.addEventListener("touchend", () => { srIsPressing = false; });
+
+// 실시간 뷰포트 리사이즈 감지 이벤트 (가로/세로 회전 처리)
+window.addEventListener('resize', () => {
+    if(!srGameStarted) return;
+    const game = document.getElementById("sr-game");
+    if(game) {
+        srWorldHeight = game.clientHeight * 2.5;
+        document.getElementById("sr-world").style.height = srWorldHeight + "px";
+        if (srPlayerY > srWorldHeight) srPlayerY = srWorldHeight - 100;
+    }
+});
 
 function srUpdateTimerUI() {
     const timerBar = document.getElementById("sr-timer-bar");
@@ -1483,7 +1471,6 @@ function srUpdateLoop(){
     if(srPlayerY < -character.offsetHeight) srEndGame();
     if(srPlayerY > srWorldHeight) srEndGame();
 
-    // Camera & Parallax
     srCameraY = srPlayerY - (game.clientHeight / 2);
     const maxCameraY = srWorldHeight - game.clientHeight;
     if(srCameraY < 0) srCameraY = 0;
