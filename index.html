@@ -6,7 +6,6 @@
     <title>아바타 월드 로그인 (말풍선 채팅 & 10명 와이드 로비)</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-    
     <link rel="stylesheet" href="style.css">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -135,6 +134,9 @@
             </div>
 
             <div class="lobby-menu-group">
+                <button id="student-learn-btn" class="btn-purple" onclick="showPage('student-learn-menu-page')" style="display: none;">학습하기</button>
+                <button id="admin-learn-lobby-btn" class="btn-purple" onclick="showPage('admin-learn-menu-page')" style="display: none;">학습관리</button>
+                
                 <button id="shop-btn" class="btn-orange" onclick="showStudentShopPage()">아바타 상점</button>
                 <button id="storage-btn" class="btn-blue" onclick="showStoragePage()">내 보관함</button>
                 <button id="student-hf-btn" class="btn-pink" onclick="enterHighFiveRoom()" style="display: none;">하이파이브</button>
@@ -216,6 +218,66 @@
                     <button id="wave-ready-btn" class="btn-green" onclick="toggleWaveReady()" style="flex:1;">준비</button>
                     <button id="wave-student-exit-btn" class="btn-gray" onclick="exitWaveRoom()" style="flex:1;">나가기</button>
                 </div>
+            </div>
+        </div>
+
+        <div id="admin-learn-menu-page" class="page">
+            <h2>📚 학습 관리</h2>
+            <div class="login-btn-group">
+                <button class="btn-blue" onclick="showPage('admin-create-learn-page')">학습데이터 생성</button>
+                <button class="btn-orange" onclick="showManageLearnPage()">학습데이터 수정</button>
+                <button class="btn-gray" onclick="showPage('student-lobby-page')">이전으로</button>
+            </div>
+        </div>
+
+        <div id="admin-create-learn-page" class="page">
+            <h2>데이터 일괄 생성</h2>
+            <p style="font-size: 15px; color: #666; margin-bottom: 10px; word-break: keep-all;">A열에는 '영어단어', B열에는 '한글뜻'이 적힌 엑셀 파일을 올려주세요.</p>
+            <div class="login-btn-group">
+                <button class="btn-green" onclick="document.getElementById('learn-excel-file-input').click()">엑셀로 일괄 생성</button>
+                <input type="file" id="learn-excel-file-input" accept=".xlsx, .xls" style="display:none;" onchange="handleLearnExcelUpload(event)">
+                <button class="btn-gray" onclick="showPage('admin-learn-menu-page')">이전으로</button>
+            </div>
+        </div>
+
+        <div id="admin-edit-learn-page" class="page">
+            <h2>학습데이터 목록</h2>
+            <div id="learn-data-list" class="list-container"></div>
+            <div class="login-btn-group row">
+                <button class="btn-gray" onclick="showPage('admin-learn-menu-page')">이전으로</button>
+            </div>
+        </div>
+
+        <div id="admin-edit-words-page" class="page">
+            <h2 id="edit-words-title">단어 수정</h2>
+            <div id="words-list" class="list-container"></div>
+            <div class="login-btn-group row">
+                <button class="btn-gray" onclick="showManageLearnPage()">이전으로</button>
+            </div>
+        </div>
+
+        <div id="student-learn-menu-page" class="page">
+            <h2>✏️ 학습 메뉴</h2>
+            <div class="login-btn-group">
+                <button class="btn-blue" onclick="showSelectDataPage('solo')">혼자하기</button>
+                <button class="btn-orange" onclick="showSelectDataPage('together')">함께하기</button>
+                <button class="btn-gray" onclick="showPage('student-lobby-page')">이전으로</button>
+            </div>
+        </div>
+
+        <div id="student-select-data-page" class="page">
+            <h2>학습 데이터 선택</h2>
+            <div id="student-data-list" class="list-container"></div>
+            <div class="login-btn-group row">
+                <button class="btn-gray" onclick="showPage('student-learn-menu-page')">이전으로</button>
+            </div>
+        </div>
+
+        <div id="student-solo-game-page" class="page">
+            <h2>혼자하기 게임 선택</h2>
+            <div class="login-btn-group">
+                <button class="btn-purple" onclick="alert('상티런 로딩 중! 🏃‍♂️')">🏃‍♂️ 상티런</button>
+                <button class="btn-gray" onclick="showSelectDataPage('solo')">이전으로</button>
             </div>
         </div>
 
