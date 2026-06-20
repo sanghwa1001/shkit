@@ -133,7 +133,7 @@
 
             <div class="lobby-menu-group">
                 <button id="student-learn-btn" class="btn-purple" onclick="showPage('student-learn-menu-page')" style="display: none;">학습하기</button>
-                <button id="admin-learn-lobby-btn" class="btn-purple" onclick="showPage('admin-learn-menu-page')" style="display: none;">학습관리</button>
+                <button id="admin-learn-lobby-btn" class="btn-purple" onclick="showPage('admin-learn-menu-page')" style="display: none;">학습 관리</button>
                 
                 <button id="shop-btn" class="btn-orange" onclick="showStudentShopPage()">아바타 상점</button>
                 <button id="storage-btn" class="btn-blue" onclick="showStoragePage()">내 보관함</button>
@@ -154,7 +154,7 @@
             <div id="my-gems-display" class="gem-display">내 보석: 💎 0</div>
             <div id="student-shop-list" class="avatar-list-container"></div>
             <div class="login-btn-group row">
-                <button class="btn-gray" onclick="showPage('student-lobby-page')">이전으로 돌아가기</button>
+                <button class="btn-gray" onclick="showPage('student-lobby-page')">이전으로</button>
             </div>
         </div>
 
@@ -222,14 +222,14 @@
         <div id="admin-learn-menu-page" class="page">
             <h2>📚 학습 관리</h2>
             <div class="login-btn-group">
-                <button class="btn-blue" onclick="showPage('admin-create-learn-page')">학습데이터 생성</button>
-                <button class="btn-orange" onclick="showManageLearnPage()">학습데이터 수정</button>
+                <button class="btn-blue" onclick="showPage('admin-create-learn-page')">학습 데이터 생성</button>
+                <button class="btn-orange" onclick="showManageLearnPage()">학습 데이터 수정</button>
                 <button class="btn-gray" onclick="showPage('student-lobby-page')">이전으로</button>
             </div>
         </div>
 
         <div id="admin-create-learn-page" class="page">
-            <h2>학습데이터 생성</h2>
+            <h2>학습 데이터 생성</h2>
             <p style="font-size: 15px; color: #666; margin-bottom: 10px; word-break: keep-all;">A열에는 '영어단어', B열에는 '한글뜻'이 적힌 엑셀 파일을 올려주세요.</p>
             <div class="login-btn-group">
                 <button class="btn-green" onclick="document.getElementById('learn-excel-file-input').click()">엑셀로 일괄 생성</button>
@@ -239,7 +239,7 @@
         </div>
 
         <div id="admin-edit-learn-page" class="page">
-            <h2>학습데이터 목록</h2>
+            <h2>학습 데이터 목록</h2>
             <div id="learn-data-list" class="list-container"></div>
             <div class="login-btn-group row">
                 <button class="btn-gray" onclick="showPage('admin-learn-menu-page')">이전으로</button>
@@ -264,7 +264,7 @@
         </div>
 
         <div id="student-select-data-page" class="page">
-            <h2>학습데이터 선택</h2>
+            <h2>학습 내용 선택</h2>
             <div id="student-data-list" class="list-container"></div>
             <div class="login-btn-group row">
                 <button class="btn-gray" onclick="showPage('student-learn-menu-page')">이전으로</button>
