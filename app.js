@@ -438,7 +438,7 @@ function updateAccount(id) {
 }
 
 function deleteAccount(id) {
-    if (localOnlineUsers[id]) return alert('현재 접속 중인 학생은 삭제할 수 정없습니다.');
+    if (localOnlineUsers[id]) return alert('현재 접속 중인 학생은 삭제할 수 없습니다.');
     if (confirm('정말 삭제하시겠습니까?')) db.ref('studentAccounts/' + id).remove();
 }
 
@@ -548,7 +548,6 @@ function enterLobbyWithNickname() {
     const finalNickname = (nicknameInput === '' ? currentUser : nicknameInput).substring(0, 10);
 
     db.ref('studentAccounts/' + currentUser).update({ nickname: finalNickname });
-    document.getElementById('welcome-message').innerText = `환영합니다, ${finalNickname}님! ✨`;
     
     document.getElementById('admin-chat-reset-btn').style.display = 'none';
     document.getElementById('admin-mute-btn').style.display = 'none';
@@ -599,8 +598,6 @@ function enterAdminLobby() {
     isAdmin = true;
     currentUser = '⭐상티';
     myCurrentAvatar = ""; 
-    
-    document.getElementById('welcome-message').innerText = `환영합니다, 상티님! 로비 상태를 확인하세요.`;
     
     document.getElementById('admin-chat-reset-btn').style.display = 'block';
     document.getElementById('admin-mute-btn').style.display = 'block';
