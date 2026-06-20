@@ -291,6 +291,13 @@ function applySelectedAvatar() {
 function checkStudentLogin() {
     const inputId = document.getElementById('student-id').value.trim();
     const inputPw = document.getElementById('student-pw').value.trim();
+    
+    // 빈칸 입력 검사 추가
+    if (inputId === '' || inputPw === '') {
+        alert('아이디와 비밀번호를 모두 입력해주세요.');
+        return;
+    }
+
     const loginBtn = document.querySelector('#student-page .btn-blue');
     const originalText = loginBtn.innerText;
     
