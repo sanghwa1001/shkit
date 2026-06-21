@@ -51,7 +51,7 @@ let currentLearnMode = null;
 let currentSelectedData = null;
 
 // ==========================================
-// 🏃‍♂️ 상티런 인게임용 전역 독립 변수 모음 (최적화 반영)
+// 🏃‍♂️ 상티런 인게임용 전역 독립 변수 모음
 // ==========================================
 let runWords = []; 
 let currentRunWord = null;
@@ -76,12 +76,10 @@ let runTimerInterval;
 
 const RUN_BASE_WIDTH = 900;
 const RUN_BASE_HEIGHT = 506.25;
-const RUN_CHAR_X = RUN_BASE_WIDTH * 0.08; // X좌표 고정 캐싱
+const RUN_CHAR_X = RUN_BASE_WIDTH * 0.08; 
 
-// 🛠️ 프레임 속도 동기화(Delta Time) 변수
 let runLastTime = 0;
 
-// 🛠️ DOM 요소 크기 캐싱 변수 (Layout Thrashing 방지)
 let runCharW = 0;
 let runCharH = 0;
 let runCharBubbleW = 0;
@@ -1020,7 +1018,7 @@ function renderStudentDataList() {
 function selectDatasetForGame(key) { currentSelectedData = key; if (currentLearnMode === 'solo') { showPage('student-solo-game-page'); } else { alert('함께하기 목록은 곧 업데이트됩니다!'); } }
 
 // ==========================================
-// 🏃‍♂️ 상티런 인게임용 전역 독립 변수 모음 (최적화 + Wrapper 분리 반영)
+// 🏃‍♂️ 상티런 인게임용 전역 독립 변수 모음
 // ==========================================
 
 function openSangtiRunGamePage() {
@@ -1038,11 +1036,13 @@ function openSangtiRunGamePage() {
     
     runWords = selectedSet.words.map(w => ({ eng: String(w.eng), kor: String(w.kor) }));
     
+    // 🛠️ 1번 수정 반영: 상티런 페이지가 열릴 때, 메인 플랫폼의 배경과 테두리를 투명하게 지우는 game-mode 클래스 부여
+    document.querySelector('.container').classList.add('game-mode');
+    
     resetSangtiRunEngineUI();
     showPage('sangtirun-page');
     updateSangtiRunScale();
 
-    // 🛠️ [성능 최적화] 요소 크기 캐싱 및 하드웨어 가속 Transform 초기화
     setTimeout(() => {
         RUN_WORLD_HEIGHT = RUN_BASE_HEIGHT * 2.5;
         document.getElementById("world").style.height = RUN_WORLD_HEIGHT + "px";
@@ -1066,6 +1066,10 @@ function openSangtiRunGamePage() {
 
 function exitSangtiRunGamePage() {
     if (runGameStarted) endSangtiRunGame();
+    
+    // 🛠️ 1번 수정 반영: 게임에서 나갈 때 다시 원래의 메인 플랫폼 디자인으로 복구
+    document.querySelector('.container').classList.remove('game-mode');
+    
     showPage('student-solo-game-page');
 }
 
@@ -1092,7 +1096,8 @@ function resetSangtiRunEngineUI() {
     bgEl.classList.remove("bg-shake");
     
     runBgX = 0;
-    bgEl.style.backgroundPosition = "0px 0%";
+    // 🛠️ 2번 수정 반영: 시작할 때 배경이 점프하지 않도록, 대기화면의 배경 Y좌표를 처음부터 카메라 기준(50%)으로 세팅
+    bgEl.style.backgroundPosition = "0px 50%";
     
     const startBtn = document.getElementById("runStartBtn");
     startBtn.className = "btn-blue";
@@ -1254,7 +1259,6 @@ function endSangtiRunGame(){
     document.getElementById("result").innerHTML = `🏆 점수 : ${runScore} 점<br><br>⭕ 정답 : ${runCorrectCount} 개<br><br>❌ 오답 : ${runWrongCount} 개`;
 }
 
-// 🛠️ [성능 최적화] 메인 게임 루프
 function runLoopEngine(timestamp) {
     if (!runLastTime) runLastTime = timestamp;
     let dt = (timestamp - runLastTime) / 16.666; 
@@ -1354,9 +1358,6 @@ function runLoopEngine(timestamp) {
     requestAnimationFrame(runLoopEngine);
 }
 
-// ==========================================
-// 윈도우 및 글로벌 바인딩 이벤트 처리
-// ==========================================
 document.addEventListener("keydown", e => { if (e.code === "Space" && document.getElementById('sangtirun-page').classList.contains('active')) { e.preventDefault(); runIsPressing = true; } });
 document.addEventListener("keyup", e => { if (e.code === "Space" && document.getElementById('sangtirun-page').classList.contains('active')) runIsPressing = false; });
 document.addEventListener("mousedown", () => { if(document.getElementById('sangtirun-page').classList.contains('active')) runIsPressing = true; });
@@ -1375,5 +1376,4 @@ document.addEventListener("visibilitychange", () => { if (document.hidden) runIs
 
 window.addEventListener("resize", () => { if (document.getElementById('sangtirun-page').classList.contains('active')) updateSangtiRunScale(); });
 
-// 최초 가동 시작
 requestAnimationFrame(runLoopEngine);
