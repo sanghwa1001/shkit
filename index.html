@@ -275,32 +275,30 @@
         </div>
 
         <div id="sangtirun-page" class="page">
-            <div class="game-area-container">
-                <div id="game-wrapper" onmousedown="runIsPressing = true;">
-                    <div id="game">
-                        <div id="bg-layer"></div>
-                        <div id="world">
-                            <div id="characterBubbleWrapper" class="bubble-wrapper">
-                                <div id="characterBubble" class="bubble"></div>
-                            </div>
-                            <div id="charWrapper" class="char-wrapper">
-                                <img id="character" src="swimcharacter1.gif">
-                            </div>
+            <div id="game-wrapper" onmousedown="runIsPressing = true;">
+                <div id="game">
+                    <div id="bg-layer"></div>
+                    <div id="world">
+                        <div id="characterBubbleWrapper" class="bubble-wrapper">
+                            <div id="characterBubble" class="bubble"></div>
                         </div>
-                        <div id="timer-container">
-                            <div id="timer-bar"></div>
+                        <div id="charWrapper" class="char-wrapper">
+                            <img id="character" src="swimcharacter1.gif">
                         </div>
-                        <div id="score">0</div>
-                        <div id="gameOver">
-                            <div id="gameOverBox">
-                                <h1>게임 종료! 🛑</h1>
-                                <div id="result"></div>
-                            </div>
+                    </div>
+                    <div id="timer-container">
+                        <div id="timer-bar"></div>
+                    </div>
+                    <div id="score">0</div>
+                    <div id="gameOver">
+                        <div id="gameOverBox">
+                            <h1>게임 종료! 🛑</h1>
+                            <div id="result"></div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="login-btn-group row" style="margin-top: 15px; width: 100%;">
+            <div class="login-btn-group row" style="margin-top: 10px; max-width: 100%;">
                 <button id="runStartBtn" class="btn-blue" onclick="startSangtiRunGame()">🎮 게임 시작!</button>
                 <button class="btn-gray" onclick="exitSangtiRunGamePage()">🔙 이전으로</button>
             </div>
