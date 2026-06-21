@@ -82,6 +82,7 @@ let runLastTime = 0;
 let runCharW = 0;
 let runCharH = 0;
 let runCharBubbleW = 0;
+let runResizeTimeout; // 🛠️ 화면 회전 최적화를 위한 타이머 변수
 
 function getNameClass(text) {
     const len = text ? text.length : 0;
@@ -1014,7 +1015,7 @@ function renderStudentDataList() {
 function selectDatasetForGame(key) { currentSelectedData = key; if (currentLearnMode === 'solo') { showPage('student-solo-game-page'); } else { alert('함께하기 목록은 곧 업데이트됩니다!'); } }
 
 // ==========================================
-// 🏃‍♂️ 상티런 인게임용 전역 독립 변수 모음 (최종 마스터본)
+// 🏃‍♂️ 상티런 인게임용 전역 독립 변수 모음
 // ==========================================
 
 function openSangtiRunGamePage() {
@@ -1032,15 +1033,15 @@ function openSangtiRunGamePage() {
     
     runWords = selectedSet.words.map(w => ({ eng: String(w.eng), kor: String(w.kor) }));
     
-    // 🛠️ [최종 반영] 게임 모드 활성화로 하얀 박스 여백 다이어트
     document.getElementById("main-container").classList.add("game-mode");
     
     resetSangtiRunEngineUI();
     showPage('sangtirun-page');
-    updateSangtiRunScale();
-
-    // 진입 즉시 배경과 카메라 좌표를 0과 정중앙으로 세팅하여 점프 버그 영구 제거
+    
+    // 🛠️ 진입 시 화면 측정 및 캐싱 (CSS 애니메이션 0.3초 대기)
     setTimeout(() => {
+        updateSangtiRunScale();
+        
         RUN_WORLD_HEIGHT = RUN_BASE_HEIGHT * 2.5;
         document.getElementById("world").style.height = RUN_WORLD_HEIGHT + "px";
         
@@ -1060,16 +1061,15 @@ function openSangtiRunGamePage() {
             document.getElementById("world").style.transform = `translateY(${-runCameraY}px)`;
             
             if(bgLayer) {
-                runBgX = 0; // 명시적 초기화
+                runBgX = 0; 
                 bgLayer.style.backgroundPosition = `${runBgX}px ${maxCamY > 0 ? (runCameraY / maxCamY) * 100 : 0}%`;
             }
         }
-    }, 50);
+    }, 300);
 }
 
 function exitSangtiRunGamePage() {
     if (runGameStarted) endSangtiRunGame();
-    // 🛠️ [최종 반영] 게임 모드 해제로 일반 로비 패딩 및 너비 복구
     document.getElementById("main-container").classList.remove("game-mode");
     showPage('student-solo-game-page');
 }
@@ -1224,7 +1224,6 @@ function startSangtiRunGame() {
     RUN_WORLD_HEIGHT = RUN_BASE_HEIGHT * 2.5;
     document.getElementById("world").style.height = RUN_WORLD_HEIGHT + "px";
     
-    // (runBgX = 0 은 reset 함수에서 미리 처리하여 점프 버그 완벽 차단됨)
     runPlayerY = (RUN_WORLD_HEIGHT / 2) - (runCharH / 2);
     runVelocity = 0; runIsPressing = false; 
 
@@ -1375,6 +1374,14 @@ document.addEventListener("touchcancel", () => { runIsPressing = false; });
 window.addEventListener("blur", () => { runIsPressing = false; });
 document.addEventListener("visibilitychange", () => { if (document.hidden) runIsPressing = false; });
 
-window.addEventListener("resize", () => { if (document.getElementById('sangtirun-page').classList.contains('active')) updateSangtiRunScale(); });
+// 🛠️ [최종 반영] 화면 회전 시 CSS 애니메이션이 끝나는 0.3초 대기 후 정확한 크기 측정
+window.addEventListener("resize", () => { 
+    if (document.getElementById('sangtirun-page').classList.contains('active')) {
+        clearTimeout(runResizeTimeout);
+        runResizeTimeout = setTimeout(() => {
+            updateSangtiRunScale(); 
+        }, 300);
+    } 
+});
 
 requestAnimationFrame(runLoopEngine);
