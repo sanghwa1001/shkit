@@ -67,7 +67,8 @@ let runIsPressing = false;
 let runMonsters = [];
 let runSpawnInterval;
 let runBgX = 0; 
-const originalCharacterSrc = "상티런 캐릭터1.gif"; 
+// 1번 반영: 오리지널 캐릭터 이미지 및 에셋 문자열 전면 영문화 교체 완료
+const originalCharacterSrc = "swimcharacter1.gif"; 
 let runAvatarChangeTimeout; 
 let runActiveCoins = [];
 let runTimeLeft = 60; 
@@ -767,12 +768,8 @@ function toggleMute() {
 }
 
 function modifyGems(action) {
-    if (selectedStudentsForGems.length === 0) {
-        alert(`보석을 ${action === 'add' ? '지급' : '차감'}할 학생을 선택해 주세요.`);
-        return;
-    }
-    const amountInput = document.getElementById('gem-control-amount');
-    const gemsToModify = parseInt(amountInput.value, 10);
+    if (selectedStudentsForGems.length === 0) { alert(`보석을 ${action === 'add' ? '지급' : '차감'}할 학생을 선택해 주세요.`); return; }
+    const amountInput = document.getElementById('gem-control-amount'); const gemsToModify = parseInt(amountInput.value, 10);
     if (isNaN(gemsToModify) || gemsToModify <= 0) { alert('올바른 보석 개수를 입력해 주세요. (1 이상의 정수)'); return; }
     
     let updates = {}; let nicknameArray = [];
@@ -913,7 +910,7 @@ function renderAvatarList() {
     });
 }
 
-// 하이파이브 및 파도타기 함수 생략(기본본 유지지)
+// 하이파이브 및 파도타기 생략(원형 유지)
 function enterHighFiveRoom() { if (isAdmin) { db.ref('highfive/state/isOpen').set(true); } else { const pRef = db.ref('highfive/participants/' + currentUser); pRef.once('value', snap => { if (!snap.val()) pRef.set({ status: 'waiting', pairId: null, pairColor: null, isOnline: true }); else pRef.update({ isOnline: true }); pRef.child('isOnline').onDisconnect().set(false); }); } selectedHfUser = null; showPage('highfive-page'); renderHighFiveRoom(); }
 function exitHighFiveRoom() { if (isAdmin) { db.ref('highfive/state').update({ isOpen: false, isStarted: false, pairCount: 0, shuffledIds: [] }); db.ref('highfive/participants').remove(); db.ref('highfive/requests').remove(); showPage('student-lobby-page'); } else { const pRef = db.ref('highfive/participants/' + currentUser); pRef.child('isOnline').onDisconnect().cancel(); if (hfState.isStarted) pRef.update({ isOnline: false }); else pRef.remove(); showPage('student-lobby-page'); } }
 function toggleHfReady() { if (hfState.isStarted) return; const myData = hfParticipants[currentUser]; if (!myData) return; db.ref('highfive/participants/' + currentUser).update({ status: myData.status === 'ready' ? 'waiting' : 'ready' }); }
@@ -1024,7 +1021,6 @@ function openSangtiRunGamePage() {
         return;
     }
     
-    // 플랫폼에서 선택한 데이터를 상티런 게임 메모리에 바로 대입
     const selectedSet = localLearningData[currentSelectedData];
     if (!selectedSet.words || selectedSet.words.length === 0) {
         alert("선택한 단어장에 단어가 존재하지 않습니다.");
@@ -1033,10 +1029,27 @@ function openSangtiRunGamePage() {
     
     runWords = selectedSet.words.map(w => ({ eng: String(w.eng), kor: String(w.kor) }));
     
-    // 인게임 UI 대기상태로 리셋
     resetSangtiRunEngineUI();
     showPage('sangtirun-page');
     updateSangtiRunScale();
+
+    // 🛠️ 2번 반영: display가 active된 직후 브라우저가 크기를 읽을 수 있도록 비동기(50ms)로 정중앙 Y좌표 계산 후 배치
+    setTimeout(() => {
+        RUN_WORLD_HEIGHT = RUN_BASE_HEIGHT * 2.5;
+        document.getElementById("world").style.height = RUN_WORLD_HEIGHT + "px";
+        
+        const charEl = document.getElementById("character");
+        if(charEl) {
+            runPlayerY = (RUN_WORLD_HEIGHT / 2) - (charEl.offsetHeight / 2);
+            charEl.style.top = runPlayerY + "px";
+            
+            // 월드 카메라도 플레이어 중앙에 정확히 추적 매칭
+            runCameraY = (runPlayerY + (charEl.offsetHeight / 2)) - (RUN_BASE_HEIGHT / 2);
+            let maxCamY = RUN_WORLD_HEIGHT - RUN_BASE_HEIGHT;
+            runCameraY = Math.max(0, Math.min(maxCamY, runCameraY));
+            document.getElementById("world").style.transform = `translateY(${-runCameraY}px)`;
+        }
+    }, 50);
 }
 
 function exitSangtiRunGamePage() {
@@ -1054,7 +1067,8 @@ function updateSangtiRunScale() {
 
 function resetSangtiRunEngineUI() {
     document.getElementById("score").textContent = "0";
-    document.getElementById("gameOver").style.display = "none";
+    // 🛠️ 3번 반영: display 제거하고 show 클래스를 제어하여 부드럽게 감춤
+    document.getElementById("gameOver").classList.remove("show");
     document.getElementById("characterBubble").style.display = "none";
     document.getElementById("timer-container").style.display = "none";
     document.getElementById("character").classList.remove("red-tint");
@@ -1107,7 +1121,9 @@ function spawnRunMonster(){
     for (let i = 0; i < 2; i++) {
         const monster = document.createElement("img");
         let monsterNum = Math.floor(Math.random() * 9) * 2 + 1;
-        monster.src = "상티런 몬스터" + monsterNum + ".gif";
+        
+        // 🛠️ 1번 반영: 상티런 몬스터 파일명 규칙 영문화 적용 (swimrunmonster1.gif 등)
+        monster.src = "swimrunmonster" + monsterNum + ".gif";
         monster.className = "monster"; monster.style.opacity = "0";
 
         const bubble = document.createElement("div");
@@ -1146,7 +1162,8 @@ function startSangtiRunGame() {
     if(runWords.length === 0) return;
     runScore = 0; runCorrectCount = 0; runWrongCount = 0;
     document.getElementById("score").textContent = "0";
-    document.getElementById("gameOver").style.display = "none";
+    // 🛠️ 3번 반영: 인게임 리셋 시 show 클래스 오프
+    document.getElementById("gameOver").classList.remove("show");
     document.getElementById("characterBubble").style.display = "block";
     document.getElementById("timer-container").style.display = "block";
     
@@ -1158,6 +1175,8 @@ function startSangtiRunGame() {
 
     RUN_WORLD_HEIGHT = RUN_BASE_HEIGHT * 2.5;
     document.getElementById("world").style.height = RUN_WORLD_HEIGHT + "px";
+    
+    // 게임을 실제 시작할 때도 정중앙 고정 해상도 물리 매칭
     runPlayerY = (RUN_WORLD_HEIGHT / 2) - (document.getElementById("character").offsetHeight / 2);
     runVelocity = 0; runIsPressing = false; runBgX = 0;
 
@@ -1188,7 +1207,8 @@ function endSangtiRunGame(){
     const startBtn = document.getElementById("runStartBtn");
     startBtn.className = "btn-blue"; startBtn.disabled = false; startBtn.innerText = "🎮 다시 시작하기";
     
-    document.getElementById("gameOver").style.display = "flex";
+    // 🛠️ 3번 반영: 모달 트리거 시 show 클래스를 올려 레이아웃 깜빡임 완벽 차단
+    document.getElementById("gameOver").classList.add("show");
     document.getElementById("result").innerHTML = `🏆 점수 : ${runScore} 점<br><br>⭕ 정답 : ${runCorrectCount} 개<br><br>❌ 오답 : ${runWrongCount} 개`;
 }
 
@@ -1237,18 +1257,25 @@ function runLoopEngine(){
 
                 if(monster.bubble.textContent === currentRunWord.kor){
                     runScore += 10; runCorrectCount++; runTimeLeft = Math.min(RUN_MAX_TIME, runTimeLeft + 3); updateRunTimerUI();
-                    timerContainer.classList.add("timer-add"); charEl.src = "상티런 캐릭터2.gif";
-                    monster.el.src = "상티런 몬스터" + (monster.monsterNum + 1) + ".gif"; monster.el.classList.add("shake");
+                    timerContainer.classList.add("timer-add"); 
+                    
+                    // 🛠️ 1번 반영: 상티런 캐릭터 반응 영문화 매칭 (swimcharacter2.gif)
+                    charEl.src = "swimcharacter2.gif";
+                    monster.el.src = "swimrunmonster" + (monster.monsterNum + 1) + ".gif"; monster.el.classList.add("shake");
 
-                    const coin = document.createElement("img"); coin.src = "상티런 코인.gif"; coin.className = "coin-effect";
+                    // 🛠️ 1번 반영: 상티런 코인 에셋 명칭 교체 (swimcoin.gif)
+                    const coin = document.createElement("img"); coin.src = "swimcoin.gif"; coin.className = "coin-effect";
                     coin.style.left = (charEl.offsetLeft + (charEl.offsetWidth / 2)) + "px"; coin.dataset.offsetY = "15"; coin.style.top = (runPlayerY + 15) + "px";
                     worldEl.appendChild(coin); runActiveCoins.push(coin);
                     setTimeout(() => { coin.remove(); runActiveCoins = runActiveCoins.filter(c => c !== coin); }, 500);
                     setRunCharacterWord();
                 } else {
                     runScore -= 10; runWrongCount++; runTimeLeft = Math.max(0, runTimeLeft - 3); updateRunTimerUI();
-                    timerContainer.classList.add("timer-sub"); charEl.src = "상티런 캐릭터3.gif"; charEl.classList.add("red-tint");
-                    monster.el.src = "상티런 몬스터" + (monster.monsterNum + 1) + ".gif";
+                    timerContainer.classList.add("timer-sub"); 
+                    
+                    // 🛠️ 1번 반영: 오답 표정 캐릭터 영문화 매칭 (swimcharacter3.gif)
+                    charEl.src = "swimcharacter3.gif"; charEl.classList.add("red-tint");
+                    monster.el.src = "swimrunmonster" + (monster.monsterNum + 1) + ".gif";
                     charEl.classList.remove("shake"); void charEl.offsetWidth; charEl.classList.add("shake");
                     bgEl.classList.remove("bg-shake"); void bgEl.offsetWidth; bgEl.classList.add("bg-shake");
                     setTimeout(() => charEl.classList.remove("red-tint"), 300);
