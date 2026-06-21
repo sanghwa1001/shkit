@@ -181,6 +181,7 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
     border: 5px solid #333; 
     border-radius: 20px;
     box-shadow: 0 8px 0 rgba(0,0,0,0.2); 
+    box-sizing: border-box; /* 🛠️ [박스 쏠림 해결] 100% width에 border 두께 포함시켜 정중앙에 배치 */
     overflow: hidden;
     margin: 0 auto;
 }
@@ -444,7 +445,7 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
     .gem-label { font-size: 13px; }
     .gem-input { font-size: 13px; width: 40px; padding: 3px; border-width: 1px;}
 
-    #game-wrapper { border-width: 3px; border-radius: 15px; box-shadow: 0 6px 0 rgba(0,0,0,0.2); }
+    #game-wrapper { border-width: 3px; border-radius: 15px; box-shadow: 0 6px 0 rgba(0,0,0,0.2); box-sizing: border-box; }
     #gameOverBox { padding: 15px; border-width: 3px; border-radius: 15px; }
     #gameOverBox h1 { font-size: 26px; margin-bottom: 10px; }
     #result { font-size: 16px; padding: 10px; }
