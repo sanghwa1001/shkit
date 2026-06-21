@@ -173,7 +173,6 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
 .hf-badge { position: absolute; top: -10px; right: -10px; background: #ff9800; border: 2px solid #fff; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.3); font-size: 12px; z-index: 10; animation: bounceBadge 0.8s infinite; }
 
 /* ===== 🏃‍♂️ 상티런 게임 전용 스타일 코어 및 반영 ===== */
-/* 🛠️ [문제 1 그림자 해결] 플랫 디자인에 맞춰 솔리드 섀도우(Solid Shadow)로 디자인 통일 */
 #game-wrapper {
     width: 100%;
     aspect-ratio: 16 / 9; 
@@ -181,7 +180,7 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
     background-color: #90caf9; 
     border: 5px solid #333; 
     border-radius: 20px;
-    box-shadow: 0 8px 0 rgba(0,0,0,0.2); /* 플랫폼 디자인과 일치하는 묵직한 하단 그림자 적용 */
+    box-shadow: 0 8px 0 rgba(0,0,0,0.2); 
     overflow: hidden;
     margin: 0 auto;
 }
@@ -267,26 +266,24 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
     z-index: 1000;
 }
 
-/* 🛠️ [문제 2 성능 최적화] GPU 가속을 위해 top, left를 0으로 초기화하고 will-change 설정 */
-#character {
+/* 🛠️ [문제 3 해결] 렌더링 충돌 방지를 위한 Wrapper 분리 아키텍처 도입 */
+.char-wrapper, .monster-wrapper, .bubble-wrapper {
     position: absolute;
-    left: 0; top: 0; 
-    z-index: 15;
+    left: 0; top: 0;
+    will-change: transform;
+}
+.char-wrapper { z-index: 15; }
+.monster-wrapper { z-index: 10; transition: opacity 0.5s ease-in; }
+.bubble-wrapper { z-index: 20; transition: opacity 0.5s ease-in; }
+
+/* 겉 상자가 이동을 담당하므로 안쪽 이미지는 자연스럽게 크기만 잡음 */
+#character, .monster-img {
+    display: block;
     transition: filter 0.1s ease-in-out; 
-    will-change: transform;
 }
 
-.monster {
-    position: absolute;
-    left: 0; top: 0;
-    z-index: 10;
-    transition: opacity 0.5s ease-in; 
-    will-change: transform;
-}
-
+/* 안쪽 말풍선은 겉 상자 안에서 편안하게 Scale(팝 이펙트)에만 집중! */
 .bubble {
-    position: absolute;
-    left: 0; top: 0;
     background: white;
     color: #333;
     border: 2px solid #333;
@@ -295,13 +292,10 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
     font-size: 14px; 
     min-width: 50px;
     white-space: nowrap;
-    z-index: 20;
     text-align: center;
     box-shadow: 0px 2px 0px rgba(0,0,0,0.2); 
     line-height: 1.2;
     font-weight: normal; 
-    transition: opacity 0.5s ease-in; 
-    will-change: transform;
 }
 
 @keyframes bubblePop {
@@ -311,7 +305,6 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
 }
 
 .bubble-pop { animation: bubblePop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-#characterBubble { display: none; }
 
 @keyframes shake {
   0% { transform: translate(0, 0) rotate(0deg); }
@@ -351,7 +344,6 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
     100% { transform: translateX(-50%) translateY(0px) scale(0.8); }
 }
 
-/* 📥 3번 반영: display 조작 대신 visibility와 opacity를 결합하여 깜빡임 제거 */
 #gameOver {
     position: absolute;
     inset: 0;
@@ -451,7 +443,6 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
     .gem-label { font-size: 13px; }
     .gem-input { font-size: 13px; width: 40px; padding: 3px; border-width: 1px;}
 
-    /* 모바일 환경에 맞게 그림자 사이즈도 얇게 조정 */
     #game-wrapper { border-width: 3px; border-radius: 15px; box-shadow: 0 6px 0 rgba(0,0,0,0.2); }
     #gameOverBox { padding: 15px; border-width: 3px; border-radius: 15px; }
     #gameOverBox h1 { font-size: 26px; margin-bottom: 10px; }
