@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>아바타 월드 로그인 (말풍선 채팅 & 10명 와이드 로비)</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+</head>
+<body>
+
+    <div class="container">
+        <div id="main-page" class="page active">
+            <h2>🎮 로그인 화면</h2>
+            <div class="login-btn-group">
+                <button class="btn-blue" onclick="showPage('student-page')">학생 로그인</button>
+                <button class="btn-gray" onclick="showPage('admin-login-page')">관리자 로그인</button>
+            </div>
+        </div>
+
+        <div id="student-page" class="page">
+            <h2>학생 로그인</h2>
+            <input type="text" id="student-id" class="login-input" placeholder="학생 아이디">
+            <input type="password" id="student-pw" class="login-input" placeholder="학생 비밀번호">
+            <div class="login-btn-group">
+                <button class="btn-blue" onclick="checkStudentLogin()">로그인</button>
+                <button class="btn-gray" onclick="showPage('main-page')">처음으로</button>
+            </div>
+        </div>
+        
+        <div id="nickname-page" class="page">
+            <h2>🏷️ 별명 설정</h2>
+            <p style="font-size: 16px; color: #555; word-break: keep-all;">대기실과 채팅창에서 사용할 멋진 별명을 입력하세요!</p>
+            <input type="text" id="student-nickname" class="login-input" placeholder="별명 (최대 10자)" maxlength="10">
+            <div class="login-btn-group">
+                <button class="btn-blue" onclick="enterLobbyWithNickname()">입장하기</button>
+            </div>
+        </div>
+
+        <div id="admin-login-page" class="page">
+            <h2>관리자 로그인</h2>
+            <input type="text" id="admin-id" class="login-input" placeholder="관리자 아이디">
+            <input type="password" id="admin-pw" class="login-input" placeholder="관리자 비밀번호">
+            <div class="login-btn-group">
+                <button class="btn-blue" onclick="checkAdminLogin()">로그인</button>
+                <button class="btn-gray" onclick="showPage('main-page')">처음으로</button>
+            </div>
+        </div>
+
+        <div id="admin-menu-page" class="page">
+            <h2>🛠️ 관리자 메뉴</h2>
+            <div class="login-btn-group">
+                <button class="btn-purple" onclick="enterAdminLobby()">로비로 이동</button>
+                <button class="btn-blue" onclick="showPage('student-create-page')">학생 계정 생성</button>
+                <button class="btn-blue" onclick="showManagePage('admin-menu-page')">학생 계정 수정</button>
+                <button class="btn-orange" onclick="showAdminShopPage('admin-menu-page')">상점 관리</button>
+                <button class="btn-gray" onclick="logoutStudent()">로그아웃</button>
+            </div>
+        </div>
+
+        <div id="student-create-page" class="page">
+            <h2>계정 만들기</h2>
+            <input type="text" id="new-student-id" class="login-input" placeholder="생성할 아이디">
+            <input type="password" id="new-student-pw" class="login-input" placeholder="생성할 비밀번호">
+            <div class="login-btn-group">
+                <button class="btn-blue" onclick="createStudentAccount()">계정 생성</button>
+                <button class="btn-green" onclick="document.getElementById('excel-file-input').click()">엑셀로 일괄 생성</button>
+                <input type="file" id="excel-file-input" accept=".xlsx, .xls" style="display:none;" onchange="handleExcelUpload(event)">
+                <button class="btn-gray" onclick="showPage('admin-menu-page')">이전으로</button>
+            </div>
+        </div>
+
+        <div id="student-manage-page" class="page">
+            <h2>학생 목록</h2>
+            <div id="student-list" class="list-container"></div>
+            <div class="login-btn-group row">
+                <button class="btn-red" onclick="deleteAllAccounts()">전체 삭제</button>
+                <button class="btn-gray" onclick="closeManagePage()">이전으로</button>
+            </div>
+        </div>
+
+        <div id="admin-shop-page" class="page">
+            <h2>상점 관리</h2>
+            <p style="font-size: 15px; color: #666; margin-bottom: 10px; word-break: keep-all;">✏️이름 / 💎가격을 수정하고 판매할 아바타를 클릭하세요!</p>
+            <div id="admin-shop-list" class="avatar-list-container"></div>
+            <div class="login-btn-group row">
+                <button class="btn-green" onclick="saveShopItems()">판매하기</button>
+                <button class="btn-gray" onclick="closeAdminShopPage()">이전으로</button>
+            </div>
+        </div>
+
+        <div id="student-lobby-page" class="page">
+            <div class="online-users-container">
+                <div class="online-users-header">
+                    <div class="online-users-title">🟢 로비 대기실</div>
+                    
+                    <div id="admin-gem-controls" class="controls-wrapper" style="display: none;">
+                        <span class="gem-label">보석</span>
+                        <input type="number" id="gem-control-amount" value="1" min="1" class="gem-input">
+                        <span class="gem-label">개</span>
+                        <button class="btn-green gem-action-btn" onclick="modifyGems('add')">✅ 지급</button>
+                        <button class="btn-red gem-action-btn" onclick="modifyGems('sub')">⛔ 차감</button>
+                    </div>
+
+                    <div id="student-gem-controls" class="controls-wrapper" style="display: none;">
+                        <span class="gem-label">보석</span>
+                        <input type="number" id="student-gem-amount" value="1" min="1" class="gem-input">
+                        <span class="gem-label">개</span>
+                        <button class="btn-green gem-action-btn" onclick="giftGems()">🎁 선물</button>
+                        <button class="btn-cyan gem-action-btn" onclick="requestGems()">🙏 조르기</button>
+                        <button id="accept-request-btn" class="btn-disabled gem-action-btn" onclick="acceptGemRequest()" disabled>🤝 수락</button>
+                    </div>
+                </div>
+                <div id="online-users-list"></div>
+            </div>
+
+            <div class="chat-section">
+                <div class="chat-log" id="chat-log"></div>
+                <div class="chat-input-area">
+                    <input type="text" id="chat-input" placeholder="채팅 입력!" onkeypress="if(event.key==='Enter') sendChat()">
+                    <button id="chat-send-btn" class="btn-green chat-action-btn" onclick="sendChat()">전송</button>
+                    <button id="admin-mute-btn" class="btn-gray chat-action-btn" style="display: none;" onclick="toggleMute()">음소거</button>
+                    <button id="admin-chat-reset-btn" class="btn-red chat-action-btn" style="display: none;" onclick="clearAllChat()">초기화</button>
+                </div>
+            </div>
+
+            <div class="lobby-menu-group">
+                <button id="student-learn-btn" class="btn-purple" onclick="showPage('student-learn-menu-page')" style="display: none;">학습하기</button>
+                <button id="admin-learn-lobby-btn" class="btn-purple" onclick="showPage('admin-learn-menu-page')" style="display: none;">학습 관리</button>
+                
+                <button id="shop-btn" class="btn-orange" onclick="showStudentShopPage()">아바타 상점</button>
+                <button id="storage-btn" class="btn-blue" onclick="showStoragePage()">내 보관함</button>
+                <button id="student-hf-btn" class="btn-pink" onclick="enterHighFiveRoom()" style="display: none;">하이파이브</button>
+                <button id="student-wave-btn" class="btn-cyan" onclick="enterWaveRoom()" style="display: none;">파도타기</button>
+                <button id="student-logout-btn" class="btn-gray" onclick="logoutStudent()">로그아웃</button>
+                
+                <button id="admin-shop-lobby-btn" class="btn-orange" onclick="showAdminShopPage('student-lobby-page')" style="display: none;">상점 관리</button>
+                <button id="admin-manage-lobby-btn" class="btn-blue" onclick="showManagePage('student-lobby-page')" style="display: none;">학생 관리</button>
+                <button id="admin-hf-btn" class="btn-pink" onclick="enterHighFiveRoom()" style="display: none;">하이파이브</button>
+                <button id="admin-wave-btn" class="btn-cyan" onclick="enterWaveRoom()" style="display: none;">파도타기</button>
+                <button id="admin-back-lobby-btn" class="btn-gray" onclick="showPage('admin-menu-page')" style="display: none;">이전으로</button>
+            </div>
+        </div>
+
+        <div id="student-shop-page" class="page">
+            <h2>💎 아바타 상점</h2>
+            <div id="my-gems-display" class="gem-display">내 보석: 💎 0</div>
+            <div id="student-shop-list" class="avatar-list-container"></div>
+            <div class="login-btn-group row">
+                <button class="btn-gray" onclick="showPage('student-lobby-page')">이전으로</button>
+            </div>
+        </div>
+
+        <div id="storage-page" class="page">
+            <h2>🎒 아바타 보관함</h2>
+            <p style="font-size: 16px; color: #555; margin-bottom:10px; word-break: keep-all;">장착할 아바타를 고르세요!</p>
+            <div id="avatar-list" class="avatar-list-container"></div>
+            <div class="login-btn-group row">
+                <button class="btn-green" onclick="applySelectedAvatar()">장착하기</button>
+                <button class="btn-gray" onclick="showPage('student-lobby-page')">이전으로</button>
+            </div>
+        </div>
+
+        <div id="highfive-page" class="page">
+            <h2 class="lobby-title" style="color: #e83e8c; text-shadow: 2px 2px 0px #fad1e1;">✋ 하이파이브</h2>
+            <div class="online-users-container" style="border-color: #f48fb1; background-color: #fce4ec;">
+                <div class="online-users-header" style="border-bottom-color: #f48fb1;">
+                    <div class="online-users-title" style="color: #d81b60;">대기실</div>
+                    <div id="hf-controls" class="controls-wrapper">
+                        <button id="hf-request-btn" class="btn-disabled hf-action-btn" onclick="sendHighFiveRequest()" disabled>✋ 하이?</button>
+                        <button id="hf-accept-btn" class="btn-disabled hf-action-btn" onclick="acceptHighFive()" disabled>🤝 파이브!</button>
+                    </div>
+                </div>
+                <div id="hf-users-list"></div>
+            </div>
+            <div class="login-btn-group row" style="margin-top: 15px;">
+                <div id="hf-admin-btn-group" style="display: none; width: 100%; gap: 10px;">
+                    <button id="hf-admin-start-btn" class="btn-green" onclick="startHfGame()" style="flex:1;">시작</button>
+                    <button class="btn-gray" onclick="exitHighFiveRoom()" style="flex:1;">나가기</button>
+                </div>
+                <div id="hf-student-btn-group" style="display: none; width: 100%; gap: 10px;">
+                    <button id="hf-ready-btn" class="btn-green" onclick="toggleHfReady()" style="flex:1;">준비</button>
+                    <button id="hf-student-exit-btn" class="btn-gray" onclick="exitHighFiveRoom()" style="flex:1;">나가기</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="wave-page" class="page">
+            <h2 class="lobby-title" style="color: #00bcd4; text-shadow: 2px 2px 0px #b2ebf2;">🌊 파도타기</h2>
+            <div class="online-users-container" style="border-color: #4dd0e1; background-color: #e0f7fa;">
+                <div class="online-users-header" style="border-bottom-color: #4dd0e1;">
+                    <div class="online-users-title" style="color: #00838f;">대기실</div>
+                    <div id="wave-controls" class="controls-wrapper">
+                        <button id="wave-action-btn" class="btn-disabled hf-action-btn" onclick="clickWaveBtn()" disabled>🌊 파도타기!</button>
+                    </div>
+                </div>
+                <div id="wave-users-list"></div>
+            </div>
+            <div class="login-btn-group row" style="margin-top: 15px;">
+                <div id="wave-admin-btn-group" style="display: none; width: 100%; gap: 10px;">
+                    <button id="wave-admin-start-btn" class="btn-green" onclick="startWaveGame()" style="flex:1;">시작</button>
+                    <button class="btn-gray" onclick="exitWaveRoom()" style="flex:1;">나가기</button>
+                </div>
+                <div id="wave-student-btn-group" style="display: none; width: 100%; gap: 10px;">
+                    <button id="wave-ready-btn" class="btn-green" onclick="toggleWaveReady()" style="flex:1;">준비</button>
+                    <button id="wave-student-exit-btn" class="btn-gray" onclick="exitWaveRoom()" style="flex:1;">나가기</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="admin-learn-menu-page" class="page">
+            <h2>📚 학습 관리</h2>
+            <div class="login-btn-group">
+                <button class="btn-blue" onclick="showPage('admin-create-learn-page')">학습 데이터 생성</button>
+                <button class="btn-orange" onclick="showManageLearnPage()">학습 데이터 수정</button>
+                <button class="btn-gray" onclick="showPage('student-lobby-page')">이전으로</button>
+            </div>
+        </div>
+
+        <div id="admin-create-learn-page" class="page">
+            <h2>학습 데이터 생성</h2>
+            <p style="font-size: 15px; color: #666; margin-bottom: 10px; word-break: keep-all;">A열에는 '영어단어', B열에는 '한글뜻'이 적힌 엑셀 파일을 올려주세요.</p>
+            <div class="login-btn-group">
+                <button class="btn-green" onclick="document.getElementById('learn-excel-file-input').click()">엑셀로 일괄 생성</button>
+                <input type="file" id="learn-excel-file-input" accept=".xlsx, .xls" style="display:none;" onchange="handleLearnExcelUpload(event)">
+                <button class="btn-gray" onclick="showPage('admin-learn-menu-page')">이전으로</button>
+            </div>
+        </div>
+
+        <div id="admin-edit-learn-page" class="page">
+            <h2>학습 데이터 목록</h2>
+            <div id="learn-data-list" class="list-container"></div>
+            <div class="login-btn-group row">
+                <button class="btn-gray" onclick="showPage('admin-learn-menu-page')">이전으로</button>
+            </div>
+        </div>
+
+        <div id="admin-edit-words-page" class="page">
+            <h2 id="edit-words-title">단어 수정</h2>
+            <div id="words-list" class="list-container"></div>
+            <div class="login-btn-group row">
+                <button class="btn-gray" onclick="showManageLearnPage()">이전으로</button>
+            </div>
+        </div>
+
+        <div id="student-learn-menu-page" class="page">
+            <h2>✏️ 학습 메뉴</h2>
+            <div class="login-btn-group">
+                <button class="btn-blue" onclick="showSelectDataPage('solo')">혼자하기</button>
+                <button class="btn-orange" onclick="showSelectDataPage('together')">함께하기</button>
+                <button class="btn-gray" onclick="showPage('student-lobby-page')">이전으로</button>
+            </div>
+        </div>
+
+        <div id="student-select-data-page" class="page">
+            <h2>학습 내용 선택</h2>
+            <div id="student-data-list" class="list-container"></div>
+            <div class="login-btn-group row">
+                <button class="btn-gray" onclick="showPage('student-learn-menu-page')">이전으로</button>
+            </div>
+        </div>
+
+        <div id="student-solo-game-page" class="page">
+            <h2>혼자하기 게임 선택</h2>
+            <div class="login-btn-group">
+                <button class="btn-purple" onclick="openSangtiRunGamePage()">상티런</button>
+                <button class="btn-gray" onclick="showSelectDataPage('solo')">이전으로</button>
+            </div>
+        </div>
+
+        <div id="sangtirun-page" class="page">
+            <div id="game-wrapper" onmousedown="if(runGameStarted) runIsPressing = true;" ontouchstart="if(runGameStarted){ event.preventDefault(); runIsPressing = true; }">
+                <div id="game">
+                    <div id="bg-layer"></div>
+                    <div id="world">
+                        <div id="characterBubbleWrapper" class="bubble-wrapper">
+                            <div id="characterBubble" class="bubble"></div>
+                        </div>
+                        <div id="charWrapper" class="char-wrapper">
+                            <img id="character" src="images/game/swim/swimcharacter1.gif">
+                        </div>
+                    </div>
+                    <div id="timer-container">
+                        <div id="timer-bar"></div>
+                    </div>
+                    <div id="score">0</div>
+                </div>
+
+                <!-- 🛠️ 6번 수정: #game은 transform: scale(--game-scale)로 확대/축소되는 캔버스라서
+                     그 안에 있던 오버레이/버튼까지 게임 화면 배율만큼 같이 커져 보였음.
+                     #game-wrapper 직속 자식으로 옮겨 scale 영향을 받지 않게 함 (위치는 기존과 동일하게 게임창 전체를 덮음) -->
+                <div id="runStartOverlay" class="run-overlay show">
+                    <div class="run-overlay-box">
+                        <div class="run-overlay-btn-group">
+                            <button id="runStartBtn" class="btn-blue" onclick="startSangtiRunGame()">시작하기</button>
+                            <button class="btn-gray" onclick="exitSangtiRunGamePage()">이전으로</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="gameOver" class="run-overlay">
+                    <div class="run-overlay-box">
+                        <div id="result"></div>
+                        <div class="run-overlay-btn-group">
+                            <button class="btn-blue" onclick="startSangtiRunGame()">다시하기</button>
+                            <button class="btn-gray" onclick="exitSangtiRunGamePage()">이전으로</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
