@@ -1,0 +1,1474 @@
+/* 중앙 정렬 및 전체 레이아웃 (모바일 완벽 대응) */
+body { 
+    font-family: 'Jua', sans-serif; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    height: 100vh; 
+    height: 100dvh; 
+    margin: 0; 
+    background: linear-gradient(135deg, #74ebd5 0%, #9face6 100%); 
+    padding: 15px; 
+    box-sizing: border-box; 
+    overflow: hidden; 
+}
+
+.container { 
+    background-color: #ffffff; 
+    padding: 30px; 
+    border: 5px solid #333; 
+    border-radius: 25px; 
+    box-shadow: 0 12px 0 rgba(0,0,0,0.2); 
+    text-align: center; 
+    width: 100%; 
+    max-width: 1000px; 
+    max-height: 95vh; 
+    max-height: 95dvh; 
+    overflow-y: auto; 
+    overflow-x: hidden; 
+    box-sizing: border-box; 
+    margin: 0; 
+}
+
+/* 🛠️ 1번 수정 반영: 상티런 진입 시 컨테이너의 하얀 배경, 테두리를 지우고 전체화면화 */
+/* 페이지 전환과의 일관성을 위해 컨테이너 자체는 트랜지션 없이 즉시 전환되고,
+   화면 전환 느낌은 .page의 fadeIn 애니메이션 하나로만 통일한다. */
+.container.game-mode {
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+/* 게임 모드일 때 활성 게임 페이지만 full-screen flex로 전환
+   (비활성 .page는 display:none 유지 — 두 게임창 동시 표시 버그 방지) */
+.container.game-mode #sangtirun-page.active,
+.container.game-mode #monsterhunter-page.active,
+.container.game-mode #pokemon-catch-page.active {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+/* 스크롤바 커스텀 */
+.container::-webkit-scrollbar { width: 8px; }
+.container::-webkit-scrollbar-thumb { background: #bbb; border-radius: 4px; }
+
+h2 { color: #333; margin-top: 0; margin-bottom: 20px; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); font-size: 32px; }
+input.login-input { max-width: 350px; margin-left: auto; margin-right: auto; display: block; }
+.login-btn-group { max-width: 350px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.login-btn-group.row { flex-direction: row; justify-content: center; max-width: 100%; }
+
+/* 🔥 CSS 변수를 활용한 컬러 테마 시스템 */
+:root {
+    --bg-color: #007bff;
+    --bd-color: #0056b3;
+    --sh-color: #004494;
+    --txt-color: #ffffff;
+}
+
+.btn-blue   { --bg-color: #007bff; --bd-color: #0056b3; --sh-color: #004494; --txt-color: #ffffff; }
+.btn-green  { --bg-color: #28a745; --bd-color: #1e7e34; --sh-color: #155724; --txt-color: #ffffff; }
+.btn-red    { --bg-color: #dc3545; --bd-color: #bd2130; --sh-color: #8b1c24; --txt-color: #ffffff; }
+.btn-gray   { --bg-color: #6c757d; --bd-color: #545b62; --sh-color: #3d4246; --txt-color: #ffffff; }
+.btn-orange { --bg-color: #ff9800; --bd-color: #e65100; --sh-color: #bf360c; --txt-color: #ffffff; }
+.btn-purple { --bg-color: #6f42c1; --bd-color: #59339d; --sh-color: #452679; --txt-color: #ffffff; }
+.btn-cyan   { --bg-color: #17a2b8; --bd-color: #117a8b; --sh-color: #0f6674; --txt-color: #ffffff; }
+.btn-pink   { --bg-color: #e83e8c; --bd-color: #d3337a; --sh-color: #b12563; --txt-color: #ffffff; }
+.btn-disabled { --bg-color: #ccc; --bd-color: #999; --sh-color: #777; --txt-color: #333; }
+
+/* 기본 대형 버튼 스타일 (PC 기준) */
+button { 
+    font-family: 'Jua', sans-serif; width: 100%; padding: 12px 10px; margin: 0; 
+    border-radius: 12px; font-size: 18px; cursor: pointer; transition: all 0.1s ease; 
+    letter-spacing: 0.5px; white-space: nowrap; 
+    border-width: 3px; border-style: solid;
+    
+    background-color: var(--bg-color); 
+    border-color: var(--bd-color); 
+    box-shadow: 0 6px 0 var(--sh-color); 
+    color: var(--txt-color); 
+}
+
+button:active:not(:disabled):not(.btn-disabled) { 
+    transform: translateY(6px); 
+    box-shadow: 0 0 0 transparent !important; 
+}
+button:disabled, .btn-disabled { 
+    cursor: not-allowed; 
+    opacity: 0.6; 
+    transform: translateY(0) !important;
+}
+
+/* 작은 버튼 공통 속성 */
+.btn-sm {
+    padding: 6px 8px;
+    font-size: clamp(13px, 3.5vw, 15px);
+    border-width: 2px;
+    border-radius: 8px;
+    box-shadow: 0 4px 0 var(--sh-color);
+}
+.btn-sm:active:not(:disabled):not(.btn-disabled) {
+    transform: translateY(4px);
+}
+
+/* 컨트롤 및 유틸리티 전용 버튼 레이아웃 */
+.chat-action-btn, .gem-action-btn, .hf-action-btn { 
+    width: auto; min-width: 70px; margin: 0; font-size: 15px; padding: 8px 10px; flex-shrink: 0; 
+}
+.edit-btn { padding: 8px; font-size: 15px; width: auto; }
+.buy-btn { width: 100%; margin: 8px 0 0 0; }
+
+input { font-family: 'Jua', sans-serif; width: 100%; padding: 12px; margin: 10px 0; border: 3px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 18px; background-color: #f9f9f9; transition: border-color 0.3s; }
+input:focus { outline: none; border-color: #007bff; background-color: #fff; }
+input:disabled { background-color: #e9ecef; cursor: not-allowed; }
+
+.page { display: none; } .active { display: block; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+.list-container { max-height: 350px; overflow-y: auto; overflow-x: hidden; margin-bottom: 15px; padding-right: 5px; background: #f8f9fa; border: 3px dashed #ccc; border-radius: 15px; padding: 10px; }
+.list-container::-webkit-scrollbar { width: 8px; }
+.list-container::-webkit-scrollbar-thumb { background: #bbb; border-radius: 5px; }
+
+.list-header { display: flex; gap: 8px; margin-bottom: 10px; font-size: 16px; color: #555; text-align: center; border-bottom: 2px solid #ddd; padding-bottom: 8px;}
+.list-header .h-id, .list-header .h-nick, .list-header .h-pw { flex: 1.5; min-width: 0; word-break: break-all; } 
+.list-header .h-btn { flex: 2; }
+
+.account-item { display: flex; gap: 6px; margin-bottom: 10px; align-items: center; background: white; padding: 6px; border-radius: 8px; border: 2px solid #eee;}
+.account-item input { flex: 1.5; margin: 0; padding: 6px; font-size: 13px; text-align: center; border-width: 2px; min-width: 0;}
+.account-item button { flex: 1; margin: 0; font-size: 13px; min-width: 0;}
+
+.lobby-title { color: #ff9800; font-size: clamp(28px, 6vw, 38px); margin-top: 0; text-shadow: 2px 2px 0px #ffe0b2; margin-bottom: 15px;}
+.welcome-text { font-size: clamp(16px, 4vw, 20px); color: #333; margin-bottom: 15px; background: #fff3cd; padding: 12px; border-radius: 10px; border: 3px solid #ffeeba; word-break: keep-all;}
+.online-users-container { background-color: #e3f2fd; border: 3px solid #90caf9; border-radius: 12px; padding: 15px; max-height: 250px; overflow-y: auto; overflow-x: hidden;}
+.online-users-container::-webkit-scrollbar { width: 8px; }
+.online-users-container::-webkit-scrollbar-thumb { background: #90caf9; border-radius: 4px; }
+
+.online-users-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed #90caf9; padding-bottom: 10px; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;}
+.online-users-title { font-size: 20px; color: #1565c0; text-align: left; margin: 0; flex-shrink: 0;}
+
+#online-users-list, #hf-users-list, #wave-users-list { display: flex; flex-wrap: wrap; gap: 10px; padding-top: 5px; justify-content: flex-start; }
+
+.online-user-item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; font-size: 14px; color: #333; background: white; padding: 10px 4px; border-radius: 12px; border: 2px solid #bbdefb; box-shadow: 0 3px 0 #bbdefb; width: 105px; height: 145px; box-sizing: border-box;}
+.online-user-avatar { height: 75px; width: auto; margin-bottom: 4px; }
+
+.name-text-fit {
+    font-weight: bold; text-align: center; white-space: nowrap !important;
+    overflow: hidden !important; text-overflow: clip !important; 
+    display: block; width: 100%; color: #333;
+}
+.name-sm { font-size: 16px; letter-spacing: -0.5px; }
+.name-md { font-size: 14.5px; letter-spacing: -0.5px; }
+.name-lg { font-size: 13px; letter-spacing: -0.5px; }
+.name-xl { font-size: 11.5px; letter-spacing: -0.8px; }
+
+.speech-bubble { position: absolute; top: -38px; left: 50%; transform: translateX(-50%); background: #fff; border: 2px solid #ff9800; border-radius: 12px; padding: 4px 8px; font-size: 13px; color: #333; white-space: normal; word-break: keep-all; line-height: 1.1; z-index: 10; box-shadow: 0 3px 0 rgba(255,152,0,0.5); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+.speech-bubble::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); border-width: 6px 6px 0; border-style: solid; border-color: #ff9800 transparent transparent transparent; display: block; width: 0; }
+@keyframes popIn { 0% { opacity: 0; transform: translate(-50%, 10px) scale(0.8); } 100% { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+
+.chat-section { background: #f1f8e9; border: 3px solid #8bc34a; border-radius: 12px; padding: 12px; margin-top: 15px; display: flex; flex-direction: column; gap: 8px; }
+.chat-log { height: 110px; overflow-y: auto; overflow-x: hidden; background: #fff; border: 2px solid #ccc; border-radius: 8px; padding: 8px; text-align: left; font-size: 16px; word-break: break-all;}
+.chat-log::-webkit-scrollbar { width: 8px; }
+.chat-log::-webkit-scrollbar-thumb { background: #8bc34a; border-radius: 4px; }
+.chat-input-area { display: flex; gap: 8px; }
+.chat-input-area input { flex: 1; margin: 0; font-size: 16px; padding: 8px; min-width: 0;}
+
+/* 2줄 x 3줄 버튼 배치를 위해 CSS Grid 적용 */
+.lobby-menu-group { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 15px; }
+.lobby-menu-group button { margin: 0; width: 100%; padding: 10px 2px; }
+
+.avatar-list-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 20px; max-height: 380px; overflow-y: auto; overflow-x: hidden; padding: 10px; }
+.avatar-item { border: 3px solid #eee; border-radius: 12px; padding: 10px; text-align: center; background-color: white; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; cursor: pointer; transition: transform 0.2s; }
+.avatar-item:hover { transform: scale(1.03); z-index: 1; }
+.avatar-item.selected, .online-user-item.selected { border-color: #ff9800; background-color: #fff3e0; box-shadow: 0 0 10px rgba(255,152,0,0.5); }
+.avatar-item img { max-width: 100%; height: auto; }
+
+.owned-tag { font-size: 14px; color: #fff; background: #888; border-radius: 6px; padding: 4px 10px; margin-top: 8px; word-break: keep-all; }
+.gem-display { font-size: clamp(18px, 5vw, 24px); color: #d84315; background: #ffcc80; padding: 10px 20px; border-radius: 20px; display: inline-block; margin-bottom: 15px; border: 3px solid #ffb74d; box-shadow: 0 4px 0 #ff9800;}
+
+.controls-wrapper { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.gem-label { font-weight: bold; font-size: 15px; color: #1565c0; white-space: nowrap; }
+.gem-input { width: 45px; margin: 0; padding: 4px; font-size: 15px; text-align: center; border: 2px solid #90caf9; border-radius: 6px; }
+
+.hf-ready-text { font-size: clamp(11px, 2.5vw, 13px); letter-spacing: -0.5px; font-weight: bold; color: #888; margin-top: auto; margin-bottom: 2px; white-space: normal; word-break: keep-all; line-height: 1.1; width: 100%; box-sizing: border-box; padding: 0 2px; text-align: center; }
+.hf-ready-text.ready { color: #28a745; }
+.hf-badge { position: absolute; top: -10px; right: -10px; background: #ff9800; border: 2px solid #fff; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.3); font-size: 12px; z-index: 10; animation: bounceBadge 0.8s infinite; }
+
+/* ===== 🏃‍♂️ 상티런 게임 전용 스타일 코어 ===== */
+/* 🛠️ 1번 수정 반영: 상하가 잘리지 않는 반응형 16:9 꽉 찬 도화지 */
+.container.game-mode #game-wrapper {
+    width: 100%;
+    /* 🛠️ 시작/종료 버튼이 게임창 내부 오버레이로 통합되어 외부 버튼 영역을 더 이상 예약하지 않음
+       → body 상하 여백(30px) + 여유분만 고려 */
+    max-width: calc((100dvh - 30px) * 16 / 9); 
+    max-height: calc(100dvh - 30px);
+    aspect-ratio: 16 / 9; 
+    /* 🛠️ 2번 수정 핵심: flex 컬럼에서 세로로 찌부러져 16:9가 깨지는 것을 방지 */
+    flex-shrink: 0;
+    position: relative;
+    background-color: #90caf9; 
+    border: 5px solid #333; 
+    border-radius: 20px;
+    box-shadow: 0 8px 0 rgba(0,0,0,0.2); 
+    box-sizing: border-box; 
+    overflow: hidden;
+    margin: 0 auto;
+}
+
+/* 게임 모드가 아닐 때 (기본) - 만약을 위한 예비용 */
+#game-wrapper {
+    width: 100%;
+    aspect-ratio: 16 / 9; 
+    flex-shrink: 0;
+    position: relative;
+    background-color: #90caf9; 
+    border: 5px solid #333; 
+    border-radius: 20px;
+    box-shadow: 0 8px 0 rgba(0,0,0,0.2); 
+    box-sizing: border-box; 
+    overflow: hidden;
+    margin: 0 auto;
+}
+
+#game {
+    width: 900px;
+    height: 506.25px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform: scale(var(--game-scale, 1));
+    transform-origin: top left;
+}
+
+#bg-layer {
+    position: absolute;
+    inset: -10px; 
+    background: url("images/swim/swimbackground.png");
+    background-size: auto 150%; 
+    background-repeat: repeat-x;
+    background-position: left 50%;
+    z-index: 1; 
+}
+
+#world {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 5;
+}
+
+#timer-container {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 50%;
+    height: 25px;
+    background-color: #F8F9FA;
+    border: 3px solid #333;
+    border-radius: 15px;
+    z-index: 1000;
+    overflow: hidden;
+    box-shadow: 0px 4px 0px rgba(0,0,0,0.2);
+    display: none; 
+}
+
+#timer-bar {
+    width: 100%;
+    height: 100%;
+    background-color: #2ed573; 
+    transition: width 0.1s linear, background-color 0.3s ease;
+}
+
+@keyframes timerAdd {
+    0% { transform: translateX(-50%) scale(1); box-shadow: 0px 4px 0px rgba(0,0,0,0.2); }
+    50% { transform: translateX(-50%) scale(1.1); box-shadow: 0 0 15px 5px #2ed573; }
+    100% { transform: translateX(-50%) scale(1); box-shadow: 0px 4px 0px rgba(0,0,0,0.2); }
+}
+
+@keyframes timerSub {
+    0% { transform: translateX(-50%) scale(1); box-shadow: 0px 4px 0px rgba(0,0,0,0.2); }
+    50% { transform: translateX(-50%) scale(1.1); box-shadow: 0 0 15px 5px #ff4757; }
+    100% { transform: translateX(-50%) scale(1); box-shadow: 0px 4px 0px rgba(0,0,0,0.2); }
+}
+
+.timer-add { animation: timerAdd 0.4s ease-out; }
+.timer-sub { animation: timerSub 0.4s ease-out; }
+
+#score {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 38px;
+    color: white; 
+    text-shadow: 
+        -2px -2px 0 #333,  
+         2px -2px 0 #333,
+        -2px  2px 0 #333,
+         2px  2px 0 #333,
+         4px  4px 0 #ff9800; 
+    z-index: 1000;
+}
+
+/* 렌더링 충돌 방지를 위한 Wrapper 구조 */
+.char-wrapper, .monster-wrapper, .bubble-wrapper {
+    position: absolute;
+    left: 0; top: 0;
+    will-change: transform;
+}
+.char-wrapper { z-index: 15; }
+.monster-wrapper { z-index: 10; transition: opacity 0.5s ease-in; }
+.bubble-wrapper { z-index: 20; transition: opacity 0.5s ease-in; }
+
+/* 겉 상자가 이동을 담당하므로 안쪽 이미지는 자연스럽게 크기만 잡음 */
+#character, .monster-img {
+    display: block;
+    transition: filter 0.1s ease-in-out; 
+}
+
+/* 안쪽 말풍선은 겉 상자 안에서 편안하게 Scale(팝 이펙트)에만 집중! */
+.bubble {
+    background: white;
+    color: #333;
+    border: 2px solid #333;
+    border-radius: 10px; 
+    padding: 4px 8px; 
+    font-size: 14px; 
+    min-width: 50px;
+    white-space: nowrap;
+    text-align: center;
+    box-shadow: 0px 2px 0px rgba(0,0,0,0.2); 
+    line-height: 1.2;
+    font-weight: normal; 
+}
+
+@keyframes bubblePop {
+    0% { transform: scale(1); background-color: white; border-color: #333; }
+    50% { transform: scale(1.3); background-color: #fffacd; border-color: #ff9800; color: #ff9800; }
+    100% { transform: scale(1); background-color: white; border-color: #333; color: #333; }
+}
+
+.bubble-pop { animation: bubblePop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+@keyframes shake {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  20% { transform: translate(-4px, 2px) rotate(-2deg); }
+  40% { transform: translate(4px, -2px) rotate(2deg); }
+  60% { transform: translate(-4px, -2px) rotate(-2deg); }
+  80% { transform: translate(4px, 2px) rotate(2deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+.shake { animation: shake 0.3s ease-in-out; }
+
+@keyframes bgShake {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-3px, 2px); }
+  40% { transform: translate(3px, -2px); }
+  60% { transform: translate(-3px, -2px); }
+  80% { transform: translate(3px, 2px); }
+  100% { transform: translate(0, 0); }
+}
+.bg-shake { animation: bgShake 0.3s ease-in-out; }
+
+.red-tint { filter: brightness(0.7) sepia(1) hue-rotate(-70deg) saturate(5) !important; }
+
+.coin-effect {
+    position: absolute;
+    width: 25px; 
+    height: auto;
+    z-index: 12; 
+    pointer-events: none;
+    animation: coinBounce 0.6s forwards;
+    opacity: 1; 
+}
+
+@keyframes coinBounce {
+    0% { transform: translateX(-50%) translateY(20px) scale(0.5); animation-timing-function: ease-out; }
+    50% { transform: translateX(-50%) translateY(-80px) scale(1.2); animation-timing-function: ease-in; }
+    100% { transform: translateX(-50%) translateY(0px) scale(0.8); }
+}
+
+/* 📥 깜빡임 제거 위한 숨김 처리 */
+/* 🛠️ 2번 수정: 시작 대기 오버레이(#runStartOverlay)와 게임종료 오버레이(#gameOver)가
+   동일한 형태로 게임창 내부 중앙에 뜨도록 공용 클래스로 통합 */
+.run-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.6); 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.run-overlay.show {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* 🛠️ 3번 수정: '상티킷'의 기본 카드(.container)와 같은 톤(흰 배경 + 검정 테두리)으로 통일 */
+/* 🛠️ 6번 수정: 이제 #game-wrapper(실제 화면 px 기준) 직속 자식이므로,
+   게임창이 넓어져도 다른 메뉴 카드와 비슷한 절대 크기를 유지하도록 max-width를 고정값으로 보강 */
+.run-overlay-box {
+    background: white;
+    border: 5px solid #333; 
+    border-radius: 25px;
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 10px 0 rgba(0,0,0,0.2);
+    animation: overlayPopIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    max-width: min(85%, 420px);
+    box-sizing: border-box;
+}
+
+/* 🛠️ flex(justify-content/align-items)로 중앙 정렬되는 박스 전용 등장 애니메이션.
+   기존 popIn은 left:50%+translateX(-50%) 방식 요소(말풍선 등)를 위한 것이라
+   여기 그대로 쓰면 박스가 좌측으로 쏠렸다 중앙으로 오는 것처럼 보였음 */
+@keyframes overlayPopIn {
+    0% { opacity: 0; transform: translateY(10px) scale(0.8); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* 🛠️ 5번 수정: 다른 메뉴의 .login-btn-group(max-width: 350px)과 동일한 폭 제한을 적용.
+   기존엔 너비 제한이 없어 게임창(거의 화면 전체) 폭의 85%까지 버튼이 늘어나
+   다른 메뉴 버튼보다 훨씬 커 보였음 */
+.run-overlay-btn-group {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+    min-width: 220px;
+    max-width: 350px;
+}
+
+/* 🛠️ 3번 수정: 버튼 높이를 폰트 크기에 맞춰 컴팩트하게 줄이고(기본 button보다 패딩 축소),
+   대신 버튼 사이 간격(gap)을 넓혀 모바일에서 오터치 없이 누르기 쉽게 함 */
+.run-overlay-btn-group button {
+    margin: 0;
+    padding: 8px 10px;
+}
+
+/* 🛠️ 3번 수정: 점수/정답/오답을 한 줄씩 보여주되 행간격을 좁혀 세로로 길어지지 않게 압축 */
+#result {
+    font-size: 20px; text-align: center; line-height: 1.5; color: #333;
+    background: #f8f9fa; padding: 12px 15px; border-radius: 15px; width: 100%;
+    margin-bottom: 12px;
+    box-sizing: border-box;
+}
+
+/* ===== 모바일 화면 완벽 최적화 ===== */
+@media screen and (max-width: 600px) {
+    /* 일반 모드일 때만 적용 (게임 모드에선 컨테이너 여백/테두리 없음) */
+    .container:not(.game-mode) { padding: 15px; border-width: 3px; border-radius: 15px; max-height: 96dvh; margin: 0; }
+    
+    h2 { font-size: 24px; margin-bottom: 15px; }
+    
+    button { 
+        padding: 10px 2px; border-width: 2px; box-shadow: 0 4px 0 var(--sh-color);
+        letter-spacing: -0.5px; font-size: clamp(13px, 3.5vw, 16px);
+    }
+    button:active:not(:disabled):not(.btn-disabled) { transform: translateY(4px); }
+    
+    .btn-sm { padding: 5px 4px; border-width: 1px; box-shadow: 0 3px 0 var(--sh-color); }
+    .btn-sm:active:not(:disabled):not(.btn-disabled) { transform: translateY(3px); }
+
+    .chat-action-btn, .gem-action-btn, .hf-action-btn { 
+        min-width: 55px; padding: 6px 6px; font-size: 12px; letter-spacing: -1px;
+    }
+
+    input { font-size: 16px; padding: 10px; border-width: 2px; margin: 8px 0;}
+    
+    .list-header { font-size: 13px; margin-bottom: 8px; padding-bottom: 5px; }
+    .account-item { padding: 4px; gap: 4px; border-width: 1px; }
+    .account-item input { font-size: 12px; padding: 6px; border-width: 1px; }
+    
+    .online-users-container { padding: 10px; border-width: 2px; max-height: 220px; }
+    .online-users-header { flex-direction: column; align-items: stretch; gap: 8px; padding-bottom: 6px; }
+    .online-users-title { font-size: 18px; text-align: center; border-bottom: 1px dashed #90caf9; padding-bottom: 5px;}
+    .controls-wrapper { justify-content: center; width: 100%; gap: 3px;}
+    
+    .online-user-item { width: 88px; height: 115px; padding: 6px 2px; border-width: 1px; }
+    .online-user-avatar { height: 55px; margin-bottom: 2px; }
+    
+    .name-sm { font-size: 14px; letter-spacing: -0.5px; }
+    .name-md { font-size: 13px; letter-spacing: -0.5px; }
+    .name-lg { font-size: 11.5px; letter-spacing: -0.5px; }
+    .name-xl { font-size: 10.5px; letter-spacing: -0.5px; }
+    
+    .hf-ready-text { font-size: 10px; }
+    
+    .speech-bubble { font-size: 11px; padding: 4px 6px; top: -32px; border-width: 1px; box-shadow: 0 2px 0 rgba(255,152,0,0.5);}
+    .speech-bubble::after { bottom: -4px; border-width: 4px 4px 0; }
+    
+    .chat-section { padding: 10px; margin-top: 10px; border-width: 2px; }
+    .chat-log { font-size: 14px; height: 90px; padding: 8px; border-width: 1px; }
+    .chat-input-area { gap: 4px; }
+    .chat-input-area input { font-size: 14px; padding: 6px; }
+    
+    .lobby-menu-group { gap: 8px; margin-top: 10px; }
+    .login-btn-group.row button { padding: 10px 2px; }
+    
+    .avatar-list-container { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; padding: 8px; margin-bottom: 10px; max-height: 300px;}
+    
+    .avatar-item { padding: 8px; border-width: 2px; border-radius: 10px; }
+    .owned-tag { font-size: 12px; padding: 4px 6px; margin-top: 5px; }
+    .gem-display { padding: 8px 16px; margin-bottom: 10px; border-width: 2px; }
+    
+    .gem-label { font-size: 13px; }
+    .gem-input { font-size: 13px; width: 40px; padding: 3px; border-width: 1px;}
+
+    #game-wrapper { border-width: 3px; border-radius: 10px; box-shadow: 0 6px 0 rgba(0,0,0,0.2); box-sizing: border-box; }
+    .run-overlay-box { padding: 15px; border-width: 3px; border-radius: 15px; }
+    .run-overlay-btn-group { min-width: 160px; gap: 12px; }
+    .run-overlay-btn-group button { padding: 6px 8px; }
+    #result { font-size: 14px; line-height: 1.4; padding: 8px 10px; }
+}
+
+/* =====================================================
+   ⚔️ 몬스터 헌터 — 아바타 월드 통합 전용 스타일
+   (hunt.css를 mh- 네임스페이스로 격리)
+   ===================================================== */
+
+/* game-mode 클래스 재활용: 상티런과 동일한 full-screen 전환 */
+.container.game-mode #mh-game-wrapper {
+    width: 100%;
+    max-width: calc((100dvh - 30px) * 16 / 9);
+    max-height: calc(100dvh - 30px);
+    aspect-ratio: 16 / 9;
+    flex-shrink: 0;
+    position: relative;
+    background-color: #90caf9;
+    border: 5px solid #333;
+    border-radius: 20px;
+    box-shadow: 0 8px 0 rgba(0,0,0,0.2);
+    box-sizing: border-box;
+    overflow: hidden;
+    margin: 0 auto;
+}
+
+#mh-game-wrapper {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    flex-shrink: 0;
+    position: relative;
+    background-color: #90caf9;
+    border: 5px solid #333;
+    border-radius: 20px;
+    box-shadow: 0 8px 0 rgba(0,0,0,0.2);
+    box-sizing: border-box;
+    overflow: hidden;
+    margin: 0 auto;
+}
+
+/* 고정 캔버스 — hunt.css #game-canvas 대응 */
+#mh-game-canvas {
+    width: 800px;
+    height: 450px;
+    position: absolute;
+    top: 0; left: 0;
+    background-image: url('images/hunt/huntbackground.png');
+    background-size: cover;
+    background-position: center bottom;
+    transform: scale(var(--mh-scale, 1));
+    transform-origin: top left;
+}
+
+/* 점수 */
+#mh-score-display {
+    position: absolute;
+    top: 15px; right: 20px;
+    font-size: 38px;
+    color: white;
+    text-shadow:
+        -2px -2px 0 #333,  2px -2px 0 #333,
+        -2px  2px 0 #333,  2px  2px 0 #333,
+         4px  4px 0 #ff9800;
+    z-index: 1000;
+    pointer-events: none;
+}
+
+/* 캐릭터/몬스터 래퍼 — hunt.css .character-wrapper 대응 */
+.mh-character-wrapper {
+    position: absolute;
+    bottom: 137px;
+    width: 150px;
+    height: 150px;
+    z-index: 10;
+    transition: opacity 0.5s ease-in;
+}
+#mh-player-wrapper {
+    left: 50px;
+    z-index: 20;
+}
+.mh-character-wrapper img {
+    position: absolute;
+    bottom: 0; left: 50%;
+    transform: translateX(-50%);
+    border: none;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+#mh-player-effect {
+    transform: translate(-155px, 45px) scale(0.85) !important;
+    transform-origin: left bottom;
+}
+
+/* 퀴즈 패널 */
+#mh-quiz-panel {
+    position: absolute;
+    top: 50px; left: 50%;
+    transform: translateX(-50%);
+    width: 340px;
+    background: rgba(255,255,255,0.75);
+    border: 3px solid #333;
+    border-radius: 14px;
+    padding: 8px 16px;
+    z-index: 500;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+    display: none;
+    box-sizing: border-box;
+    text-align: center;
+}
+#mh-quiz-word {
+    font-size: 24px;
+    font-weight: bold;
+    color: #1a237e;
+    letter-spacing: 1px;
+}
+
+/* 보기 버튼 줄 */
+#mh-quiz-choices {
+    position: absolute;
+    bottom: 5px; left: 8px;
+    width: 724px;
+    display: none;
+    flex-direction: row;
+    gap: 8px;
+    z-index: 500;
+}
+
+.mh-quiz-btn {
+    font-family: 'Jua', sans-serif;
+    font-size: 14px;
+    padding: 8px 4px;
+    height: 52px;
+    border-radius: 10px;
+    border: 2px solid #0056b3;
+    background: rgba(0,123,255,0.75);
+    color: white;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    box-shadow: 0 3px 0 rgba(0,68,148,0.4);
+    flex: 1;
+    box-sizing: border-box;
+    text-align: center;
+    white-space: normal;
+    overflow: hidden;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.3;
+}
+.mh-quiz-btn:active { transform: translateY(3px); box-shadow: 0 0 0 transparent; }
+.mh-quiz-btn.correct { background: #28a745; border-color: #1e7e34; box-shadow: 0 3px 0 #155724; }
+.mh-quiz-btn.wrong   { background: #dc3545; border-color: #bd2130; box-shadow: 0 3px 0 #8b1c24; }
+.mh-quiz-btn:disabled { cursor: not-allowed; }
+
+/* 궁극기 버튼 */
+#mh-ultimate-btn-wrap {
+    position: absolute;
+    bottom: 5px; right: 8px;
+    z-index: 600;
+    width: 52px;
+}
+#mh-ultimate-btn {
+    width: 100%; padding: 0;
+    border-radius: 10px;
+    border: none;
+    background: transparent;
+    cursor: not-allowed;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0; opacity: 1;
+    transition: box-shadow 0.1s, transform 0.1s;
+}
+#mh-ultimate-btn.ready { cursor: pointer; filter: drop-shadow(0 0 8px #00aaff); }
+#mh-ultimate-btn.ready:active { transform: translateY(4px); }
+
+#mh-ultimate-icon-wrap {
+    position: relative;
+    width: 52px; height: 52px;
+    flex-shrink: 0;
+}
+#mh-ultimate-icon-gray {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    filter: grayscale(100%);
+    opacity: 0.25;
+    transition: opacity 0.3s;
+    object-fit: contain;
+}
+#mh-ultimate-icon-color {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: contain;
+    clip-path: inset(100% 0% 0% 0%);
+    transition: clip-path 0.3s ease;
+}
+#mh-ultimate-btn.ready #mh-ultimate-icon-gray  { opacity: 0; }
+#mh-ultimate-btn.ready #mh-ultimate-icon-color { clip-path: inset(0% 0% 0% 0%); }
+
+/* 발사체 */
+.mh-projectile {
+    position: absolute;
+    z-index: 15;
+    transform: translateY(50%);
+}
+
+/* 궁극기 이펙트 */
+#mh-ultimate-effect {
+    transform: translate(-185px, 55px) scale(0.58125);
+    transform-origin: left bottom;
+}
+
+/* 오버레이 — hunt.css .run-overlay 대응 */
+.mh-overlay {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+.mh-overlay.show { visibility: visible; opacity: 1; pointer-events: auto; }
+
+.mh-overlay-box {
+    background: white;
+    border: 5px solid #333;
+    border-radius: 25px;
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 10px 0 rgba(0,0,0,0.2);
+    animation: overlayPopIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275);
+    max-width: min(85%, 420px);
+    box-sizing: border-box;
+}
+
+.mh-overlay-btn-group {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+    min-width: 220px;
+    max-width: 350px;
+}
+.mh-overlay-btn-group button { margin: 0; padding: 8px 10px; }
+
+#mh-result {
+    font-size: 20px;
+    text-align: center;
+    line-height: 1.5;
+    color: #333;
+    background: #f8f9fa;
+    padding: 12px 15px;
+    border-radius: 15px;
+    width: 100%;
+    margin-bottom: 12px;
+    box-sizing: border-box;
+}
+
+/* 모바일 */
+@media screen and (max-width: 600px) {
+    #mh-game-wrapper { border-width: 3px; border-radius: 10px; box-shadow: 0 6px 0 rgba(0,0,0,0.2); }
+    .mh-overlay-box  { padding: 15px; border-width: 3px; border-radius: 15px; }
+    .mh-overlay-btn-group { min-width: 160px; gap: 12px; }
+    .mh-overlay-btn-group button { padding: 6px 8px; }
+    #mh-result { font-size: 14px; line-height: 1.4; padding: 8px 10px; }
+}
+
+/* =====================================================
+   🎮 포켓몬 캐치 게임 전용 스타일
+   (game-mode 클래스 재활용: 상티런/헌터와 동일한 full-screen 전환)
+   ===================================================== */
+/* 게임 화면 기본 설정 */
+:root {
+    --monster-size: 288px; /* 몬스터 & shiny 이펙트가 공유하는 크기 */
+    --pixel-font: 'NeoDunggeunmo', 'Malgun Gothic', sans-serif;
+    --container-height: 600px;
+
+    /* 이름/종족값 표시창 치수 (아래 #monster-info 규칙과 동일하게 유지) */
+    --info-top:    36px; /* 텍스트(줄높이 20px) + hp바 사이 3px 여백을 두고, 상단 여백 15px = 하단(#control-panel) 여백과 동일하게 유지 */
+    --info-width:  calc(var(--monster-size) * 0.8 * 0.9); /* hp_bar.png 표시 가로 크기 (포켓몬 이미지 가로 크기의 80%에서 다시 90% 축소) */
+    --info-height: calc(var(--info-width) * 247 / 1596); /* hp_bar.png 원본 비율(1596x247) 유지 */
+    --info-gap:    20px; /* 표시창 하단 ~ 포켓볼 정점 사이 여백 */
+    --side-gap:    17px; /* hp_bar 좌우 테두리 ~ 타이머/CP 텍스트 사이 간격 (양쪽 동일) */
+
+    /* 액션창(action_box.png) 치수 — #action-btns, #capture-message 양쪽에서 공유 */
+    --action-box-width:  340px;
+    --action-box-height: calc(var(--action-box-width) * 791 / 4045); /* action_box.png 원본 비율(4045x791) 유지 */
+
+    /* 포켓볼 치수/점프 높이 (script.js의 BOUNCE_PEAK_OFFSET, #pokeball 크기와 반드시 일치) */
+    --ball-size:          53.33px;
+    --bounce-peak-offset: 125px;
+
+    /*
+     * 몬스터 위치는 "포켓볼이 튕겨 오르는 정점"을 기준으로 역산한다.
+     * 포켓볼은 던져지면 몬스터 중심(monster-top + size/2)까지 날아간 뒤,
+     * 추가로 bounce-peak-offset 만큼 더 튕겨 오른다.
+     * 그 정점(윗변)이 표시창 하단에서 info-gap 만큼 떨어지도록 monster-top을 계산.
+     */
+    --monster-top: calc(
+        var(--info-top) + var(--info-height) + var(--info-gap)
+        + var(--bounce-peak-offset) + (var(--ball-size) / 2)
+        - (var(--monster-size) / 2)
+    );
+
+    /*
+     * 착지 겹침 비율: 도트 디자인 패치 이전 원본 레이아웃(monster-top 50px,
+     * dropped bottom 240px)에서 몬스터 아랫변과 포켓볼 윗변이 겹치던 정도(~31.33px).
+     * 몬스터 위치가 바뀌어도 이 겹침 폭을 그대로 유지하기 위한 기준값.
+     */
+    --land-overlap: 31.33px;
+    --drop-bottom: calc(
+        var(--container-height) - var(--ball-size)
+        - var(--monster-top) - var(--monster-size)
+        + var(--land-overlap)
+    );
+}
+
+#pokemon-catch-page, #pokemon-catch-page * {
+    -webkit-font-smoothing: none;
+    font-smooth: never;
+}
+
+/* 원본은 body 전체를 flex로 중앙 정렬했지만, 여기서는 다른 페이지들과 같은 컨테이너를 쓰므로
+   #pokemon-catch-page.active에 대한 flex 중앙 정렬을 아래 게임모드 규칙(상티런/헌터와 동일 패턴)에서 처리하고,
+   여기서는 폰트/배경 등 body가 담당하던 나머지 스타일만 페이지에 그대로 적용한다. */
+#pokemon-catch-page {
+    background-color: transparent;
+    font-family: var(--pixel-font);
+    overflow: hidden;
+}
+
+/* 아바타 월드 전역 button{} 리셋(width:100%, border-radius:12px, white-space:nowrap,
+   box-shadow: ...var(--sh-color) 등 :root 기본값으로 실제 그림자까지 생기는 문제)이
+   포켓몬 캐치 버튼에 새어 들어오지 않도록 이 페이지 안의 button은 다시 원본 상태로 되돌림 */
+#pokemon-catch-page button {
+    border-radius: 0;
+    transition: none;
+    white-space: normal;
+    box-shadow: none;
+}
+/* width는 자기 너비를 직접 지정하는 .quiz-close-btn(26px 정사각형)은 건드리지 않고,
+   원래 너비 지정이 없던 버튼들만 auto로 되돌림 */
+#pokemon-catch-page .menu-item,
+#pokemon-catch-page .quiz-option-btn {
+    width: auto;
+}
+#pokemon-catch-page button:active:not(:disabled):not(.btn-disabled) {
+    transform: none;
+    box-shadow: none;
+}
+#pokemon-catch-page button.menu-item:active:not(:disabled) {
+    transform: translate(1px, 1px);
+}
+
+/* 상티런 #game-wrapper, 헌터 #mh-game-wrapper와 동일한 방식:
+   CSS aspect-ratio로 비율을 못박아두고 max-width/max-height로 화면에 맞춰 키움 —
+   화면 회전 시에도 브라우저가 레이아웃 계산과 동시에 처리해서 JS 타이밍에 좌우되지 않음 */
+#game-frame {
+    width: 100%;
+    max-width: calc((100dvh - 30px) * 370 / 600);
+    max-height: calc(100dvh - 30px);
+    aspect-ratio: 370 / 600;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+#game-container {
+    position: relative;
+    width: 370px; /* 액션창(가장 넓은 요소, 340px) 기준 좌우 여백이 15px(=상하 여백과 동일)가 되도록 조정 */
+    height: var(--container-height);
+    box-sizing: border-box; /* border(4px)가 370x600 밖으로 추가되지 않고 안쪽에 포함되도록 (테두리 잘림 방지) */
+    flex-shrink: 0; /* #game-frame(flex)의 기본 row 방향 shrink 대상이 되어 가로만 눌리는 것 방지 —
+                        크기 조절은 오직 JS transform:scale()로만 처리 */
+    background-color: #ffffff;
+    border: 4px solid #333;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    transform-origin: center center; /* 반응형 스케일링(JS) 시 중앙 기준으로 확대/축소 */
+}
+
+/* 시작 화면 / 결과 화면 / 일시정지 화면 (공통 오버레이 레이아웃) */
+#start-screen,
+#result-screen,
+#pause-modal {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    background-color: rgba(255, 255, 255, 0.9);
+    z-index: 20;
+}
+
+#upload-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+/* 결과 화면: 점수/정답/오답 표시 */
+#result-stats {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--pixel-font);
+    font-size: 16px;
+    line-height: 20px;
+    letter-spacing: 0.5px;
+    color: #000;
+}
+
+#result-score { color: #e67e00; }
+#result-correct { color: #2ed573; }
+#result-wrong { color: #ff4757; }
+
+/* 결과 화면: 다시하기 / 포획한 포켓몬 */
+#result-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+/* 퀴즈 모달 */
+#quiz-modal {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 40;
+}
+
+#quiz-box {
+    position: relative;
+    width: 300px;
+    box-sizing: border-box;
+    padding: 28px 18px 18px;
+    background-color: #ffffff;
+    border: 4px solid #1a1a1a;
+    border-radius: 6px;
+    font-family: var(--pixel-font);
+    text-align: center;
+}
+
+.quiz-close-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 26px;
+    height: 26px;
+    line-height: 20px;
+    border: 2px solid #1a1a1a;
+    background-color: #ff4757;
+    color: #fff;
+    font-family: var(--pixel-font);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0;
+}
+
+.quiz-close-btn:hover {
+    background-color: #ff6b81;
+}
+
+#quiz-question {
+    font-size: 16px;
+    line-height: 20px;
+    letter-spacing: 0.5px;
+    color: #000;
+    margin-bottom: 18px;
+    word-break: break-word;
+    min-height: 24px;
+}
+
+#quiz-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.quiz-option-btn {
+    font-family: var(--pixel-font);
+    font-size: 16px;
+    letter-spacing: 0.5px;
+    line-height: 20px;
+    height: 60px;
+    padding: 0 10px;
+    box-sizing: border-box;
+    border: 2px solid #1a1a1a;
+    background-color: #f0f0f0;
+    color: #000;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    text-align: center;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+}
+
+.quiz-option-btn:hover:not(:disabled) {
+    background-color: #e0e0e0;
+}
+
+.quiz-option-btn.correct {
+    background-color: #2ed573;
+    color: #fff;
+}
+
+.quiz-option-btn.wrong {
+    background-color: #ff4757;
+    color: #fff;
+}
+
+.quiz-option-btn:disabled {
+    cursor: not-allowed;
+}
+
+#quiz-feedback {
+    font-size: 14px;
+    line-height: 20px;
+    letter-spacing: 0.5px;
+    height: 18px;
+    color: #000;
+}
+
+/* 포획한 포켓몬 목록 모달 */
+#captured-modal {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 40;
+}
+
+#captured-box {
+    position: relative;
+    width: 300px;
+    max-height: 480px;
+    box-sizing: border-box;
+    padding: 28px 14px 18px;
+    background-color: #ffffff;
+    border: 4px solid #1a1a1a;
+    border-radius: 6px;
+    font-family: var(--pixel-font);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+}
+
+#captured-title {
+    font-size: 16px;
+    letter-spacing: 0.5px;
+    color: #000;
+    margin-bottom: 14px;
+}
+
+#captured-list {
+    overflow-y: auto;
+    max-height: 380px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 4px;
+}
+
+.captured-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    box-sizing: border-box;
+    border: 2px solid #1a1a1a;
+    background-color: #f0f0f0;
+    text-align: left;
+}
+
+.captured-icon {
+    width: 32px;
+    height: 24px; /* 원본 아이콘(40x30, 4:3 비율)과 동일한 비율로 축소 — 왜곡 없이 표시 */
+    flex-shrink: 0;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+}
+
+.captured-name {
+    flex: 1;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    color: #000;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.captured-cp {
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    color: #e67e00;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+#captured-empty {
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    color: #666;
+    padding: 20px 0;
+}
+
+/* 컨트롤 패널 */
+#control-panel {
+    position: absolute;
+    bottom: 15px; /* 상단 여백(15px)과 동일하게 맞춤 */
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+#action-btns {
+    position: relative;
+    width: var(--action-box-width);
+    height: var(--action-box-height); /* action_box.png 원본 비율(4045x791) 유지 */
+    background-image: url('images/pokemon/layout/action_box.png');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    image-rendering: pixelated;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 10px;
+    box-sizing: border-box;
+}
+
+/* 던지기 / 도망가기 — 배경 이미지 위에 글자만 표시 */
+.menu-item {
+    background: none;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    margin: 0;
+    font-family: var(--pixel-font);
+    font-size: 16px;
+    line-height: 20px;
+    letter-spacing: 0.5px;
+    color: #000;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.menu-item.btn-hidden {
+    opacity: 0;
+}
+
+/* 포획 성공 메시지 — 액션창(action-btns) 내부에 겹쳐서 좌측 정렬로 한 글자씩 타이핑 */
+#capture-message {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: calc((var(--action-box-height) - 50px) / 2) 30px 0; /* 2줄(줄간격 25px×2=50px) 기준 위아래 여백을 정확히 절반씩 */
+    box-sizing: border-box;
+    text-align: left;
+    white-space: pre-line;
+    font-family: var(--pixel-font);
+    font-size: 16px;
+    letter-spacing: 0.5px;
+    line-height: 25px;
+    color: #000;
+    z-index: 8;
+    pointer-events: none;
+    background: none;
+}
+
+.menu-item:active:not(:disabled) {
+    transform: translate(1px, 1px);
+}
+
+.menu-item:disabled {
+    color: #999;
+    cursor: not-allowed;
+}
+
+/* 공통 버튼 — 도트(픽셀) 스타일: 계단형 모서리 + 베벨 테두리 */
+.btn {
+    --px: 4px; /* 픽셀 노치 크기 */
+    position: relative;
+    padding: 12px 10px;
+    font-family: var(--pixel-font);
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    border: 4px solid #1a1a1a;
+    border-radius: 0;
+    color: white;
+    image-rendering: pixelated;
+    clip-path: polygon(
+        0 var(--px), var(--px) var(--px), var(--px) 0,
+        calc(100% - var(--px)) 0, calc(100% - var(--px)) var(--px), 100% var(--px),
+        100% calc(100% - var(--px)), calc(100% - var(--px)) calc(100% - var(--px)), calc(100% - var(--px)) 100%,
+        var(--px) 100%, var(--px) calc(100% - var(--px)), 0 calc(100% - var(--px))
+    );
+    box-shadow:
+        inset 3px 3px 0 rgba(255,255,255,0.35),
+        inset -3px -3px 0 rgba(0,0,0,0.35),
+        4px 4px 0 rgba(0,0,0,0.35);
+    transition: none;
+}
+
+.btn:active:not(:disabled) {
+    transform: translate(3px, 3px);
+    box-shadow:
+        inset -3px -3px 0 rgba(255,255,255,0.25),
+        inset 3px 3px 0 rgba(0,0,0,0.35),
+        1px 1px 0 rgba(0,0,0,0.35);
+}
+
+.btn-success              { background-color: #2ed573; }
+.btn-success:hover        { background-color: #7bed9f; }
+.btn-fail                 { background-color: #ff4757; }
+.btn-fail:hover           { background-color: #ff6b81; }
+.btn-run                  { background-color: #576574; }
+.btn-run:hover            { background-color: #8395a7; }
+/* 다시하기 버튼 (btn-success/fail/run 아닌 경우) */
+.btn:not(.btn-success):not(.btn-fail):not(.btn-run)       { background-color: #ff4757; }
+.btn:not(.btn-success):not(.btn-fail):not(.btn-run):hover { background-color: #ff6b81; }
+.btn:disabled {
+    background-color: #999;
+    cursor: not-allowed;
+    border-color: #4d4d4d;
+    box-shadow:
+        inset 3px 3px 0 rgba(255,255,255,0.15),
+        inset -3px -3px 0 rgba(0,0,0,0.25),
+        4px 4px 0 rgba(0,0,0,0.2);
+}
+
+/* 숨김 */
+.hidden { display: none !important; }
+
+/* 몬스터 이름 / 종족값 오버레이 — hp_bar.png 이미지를 그대로 표시창으로 사용 */
+#monster-info {
+    position: absolute;
+    top: var(--info-top);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 6;
+    width: var(--info-width);
+    height: var(--info-height);
+    background-image: url('images/pokemon/layout/hp_bar.png');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    image-rendering: pixelated;
+    pointer-events: none;
+    transition: opacity 0.4s ease-in; /* 몬스터(#monster)와 동일한 페이드 속도 */
+}
+
+/* 이름/종족값 텍스트는 hp_bar.png 속 초록 게이지 시작 x위치(가로 약 29.2%)에 좌측 정렬,
+   hp_bar 상단에서 10px 위에 표시 */
+#monster-info-text {
+    position: absolute;
+    left: 29.2%;
+    bottom: calc(100% + 3px);
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    font-family: var(--pixel-font);
+    line-height: 20px;
+}
+
+#monster-name {
+    font-size: 16px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    color: #000;
+}
+
+#monster-bst {
+    font-size: 16px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    color: #e67e00;
+}
+
+/* 제한시간 타이머 / 포획 CP 합계 — hp_bar와 같은 세로 라인, 좌우 여백에 배치해 hp_bar와 겹치지 않음 */
+#game-timer,
+#cp-total {
+    position: absolute;
+    top: var(--info-top);
+    height: var(--info-height);
+    display: flex;
+    align-items: center;
+    z-index: 6;
+    font-family: var(--pixel-font);
+    font-size: 16px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    color: #000;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+#game-timer {
+    right: calc(50% + var(--info-width) / 2 + var(--side-gap));
+    text-align: right;
+    color: #ff4757;
+}
+
+#cp-total {
+    left: calc(50% + var(--info-width) / 2 + var(--side-gap));
+    text-align: left;
+    color: #27ae60;
+}
+
+/* 몬스터 — transition은 포획 흡수 방향 전용 (탈출 시엔 JS 인라인으로 덮어씀) */
+#monster {
+    position: absolute;
+    top: var(--monster-top);
+    left: 50%;
+    transform: translateX(-50%) scale(1);
+    transform-origin: center center;
+    width: var(--monster-size);
+    height: auto;
+    z-index: 1;
+    transition: opacity 0.4s ease-in, transform 0.4s ease-in;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+}
+
+/* 포획 흡수 연출: 정점에 있는 몬스터볼 중심으로 이동하며 작아지고 페이드아웃 */
+#monster.captured {
+    opacity: 0;
+    transform: translateX(-50%) translateY(calc(var(--bounce-peak-offset) * -1)) scale(0.05);
+    transition: opacity 0.28s ease-in, transform 0.28s ease-in; /* 포획 흡수 전용 — 기본 0.4s의 70% */
+}
+
+/* shiny 등장 이펙트 — 몬스터와 완전히 같은 크기/위치로 겹쳐서 표시 */
+#shiny-effect {
+    position: absolute;
+    top: var(--monster-top);
+    left: 50%;
+    transform: translateX(-50%);
+    width: var(--monster-size);
+    height: auto;
+    z-index: 2;
+    pointer-events: none;
+}
+
+/* 포켓볼 */
+#pokeball {
+    position: absolute;
+    bottom: 90px; /* 액션창(하단 15px, 높이 ~66.5px)과 겹치지 않도록 여유 확보 */
+    left: 50%;
+    transform: translateX(-50%);
+    width: var(--ball-size);
+    height: var(--ball-size);
+    object-fit: contain;
+    z-index: 5;
+    transition: bottom 0.42s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* 충돌 후 정점까지 솟아오르는 애니메이션 (forwards: 정점 위치 유지) */
+@keyframes ball-bounce {
+    0%   { transform: translateX(-50%) translateY(0); }
+    100% { transform: translateX(-50%) translateY(calc(var(--bounce-peak-offset) * -1)); }
+}
+
+#pokeball.bouncing {
+    animation: ball-bounce 0.525s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* 낙하 후 착지 위치 */
+.dropped {
+    bottom: var(--drop-bottom) !important;
+    transition: bottom 0.28s cubic-bezier(0.6, 0.05, 1, 0.5) !important;
+}
+
+/* 착지 바운스 애니메이션 */
+@keyframes ball-land {
+    0%   { transform: translateX(-50%) translateY(0)     scale(1,    1   ); }
+    25%  { transform: translateX(-50%) translateY(0)     scale(1.25, 0.75); }
+    55%  { transform: translateX(-50%) translateY(-12px) scale(0.95, 1.05); }
+    80%  { transform: translateX(-50%) translateY(0)     scale(1.05, 0.95); }
+    100% { transform: translateX(-50%) translateY(0)     scale(1,    1   ); }
+}
+
+#pokeball.landing {
+    animation: ball-land 0.28s ease-out;
+}
