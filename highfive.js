@@ -66,15 +66,21 @@ function acceptHighFive() {
         const selfAlreadyPaired = freshParticipants[currentUser]?.pairId != null;
 
         if (!hasRequest || targetAlreadyPaired || selfAlreadyPaired) {
-            // 그 사이 상대가 이미 다른 사람과 매칭되었거나 요청이 사라진 경우 — 조용히 선택 해제 후 최신 상태로 재렌더링
+            // 그 사이 상대가 이미 다른 사람과 매칭되었거나 요청이 사라진 경우 — 선택 해제 후 최신 상태로 재렌더링
             selectedHfUser = null;
             renderHighFiveRoom();
+            if (targetAlreadyPaired) alert('선택한 친구는 이미 다른 친구와 하이파이브가 성사되었습니다. 다른 친구를 선택해 주세요.');
             return;
         }
 
         // pairCount는 트랜잭션으로 원자적으로 증가시켜, 여러 쌍이 동시에 수락해도 번호가 겹치지 않도록 함
         db.ref('highfive/state/pairCount').transaction(current => (current || 0) + 1).then(result => {
-            if (!result.committed) { selectedHfUser = null; renderHighFiveRoom(); return; }
+            if (!result.committed) {
+                selectedHfUser = null;
+                renderHighFiveRoom();
+                alert('선택한 친구는 이미 다른 친구와 하이파이브가 성사되었습니다. 다른 친구를 선택해 주세요.');
+                return;
+            }
 
             const nextPairId = result.snapshot.val();
             const pairColor = PAIR_COLORS[nextPairId % PAIR_COLORS.length];
