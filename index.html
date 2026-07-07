@@ -116,7 +116,7 @@
                         <span class="gem-label">개</span>
                         <button class="btn-green gem-action-btn" onclick="modifyGems('add')">✅ 지급</button>
                         <button class="btn-red gem-action-btn" onclick="modifyGems('sub')">⛔ 차감</button>
-                        <button id="admin-gem-freeze-btn" class="btn-gray gem-action-btn" onclick="toggleGemFreeze()">🧊 얼음!</button>
+                        <button id="admin-gem-freeze-btn" class="btn-blue gem-action-btn" onclick="toggleGemFreeze()">🧊 얼음!</button>
                     </div>
 
                     <div id="student-gem-controls" class="controls-wrapper" style="display: none;">
@@ -136,7 +136,7 @@
                 <div class="chat-input-area">
                     <input type="text" id="chat-input" placeholder="채팅 입력!" onkeypress="if(event.key==='Enter') sendChat()">
                     <button id="chat-send-btn" class="btn-green chat-action-btn" onclick="sendChat()">전송</button>
-                    <button id="admin-mute-btn" class="btn-gray chat-action-btn" style="display: none;" onclick="toggleMute()">음소거</button>
+                    <button id="admin-mute-btn" class="btn-blue chat-action-btn" style="display: none;" onclick="toggleMute()">음소거</button>
                     <button id="admin-chat-reset-btn" class="btn-red chat-action-btn" style="display: none;" onclick="clearAllChat()">초기화</button>
                 </div>
             </div>

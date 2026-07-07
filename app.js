@@ -187,7 +187,7 @@ db.ref('chatState/isMuted').on('value', (snapshot) => {
         }
         if (isAdmin && muteBtn) {
             muteBtn.innerText = "음소거";
-            muteBtn.className = "btn-gray chat-action-btn";
+            muteBtn.className = "btn-blue chat-action-btn";
         }
     }
 });
@@ -219,7 +219,7 @@ db.ref('gemState/isFrozen').on('value', (snapshot) => {
         }
         if (isAdmin && freezeBtn) {
             freezeBtn.innerText = "🧊 얼음!";
-            freezeBtn.className = "btn-gray gem-action-btn";
+            freezeBtn.className = "btn-blue gem-action-btn";
         }
     }
 });
@@ -662,7 +662,7 @@ function enterAdminLobby() {
         muteBtn.className = "btn-red chat-action-btn";
     } else {
         muteBtn.innerText = "음소거";
-        muteBtn.className = "btn-gray chat-action-btn";
+        muteBtn.className = "btn-blue chat-action-btn";
     }
 
     selectedStudentsForGems = []; 
