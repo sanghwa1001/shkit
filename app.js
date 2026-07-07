@@ -176,7 +176,7 @@ db.ref('chatState/isMuted').on('value', (snapshot) => {
         }
         if (isAdmin && muteBtn) {
             muteBtn.innerText = "음소거 해제";
-            muteBtn.className = "btn-red chat-action-btn";
+            muteBtn.className = "btn-gray chat-action-btn";
         }
     } else {
         if (!isAdmin) {
@@ -187,7 +187,7 @@ db.ref('chatState/isMuted').on('value', (snapshot) => {
         }
         if (isAdmin && muteBtn) {
             muteBtn.innerText = "음소거";
-            muteBtn.className = "btn-blue chat-action-btn";
+            muteBtn.className = "btn-red chat-action-btn";
         }
     }
 });
@@ -208,7 +208,7 @@ db.ref('gemState/isFrozen').on('value', (snapshot) => {
         }
         if (isAdmin && freezeBtn) {
             freezeBtn.innerText = "💥 땡!";
-            freezeBtn.className = "btn-red gem-action-btn";
+            freezeBtn.className = "btn-gray gem-action-btn";
         }
     } else {
         if (!isAdmin && giftBtn && requestBtn) {
@@ -659,10 +659,19 @@ function enterAdminLobby() {
     const muteBtn = document.getElementById('admin-mute-btn');
     if (isChatMuted) {
         muteBtn.innerText = "음소거 해제";
-        muteBtn.className = "btn-red chat-action-btn";
+        muteBtn.className = "btn-gray chat-action-btn";
     } else {
         muteBtn.innerText = "음소거";
-        muteBtn.className = "btn-blue chat-action-btn";
+        muteBtn.className = "btn-red chat-action-btn";
+    }
+
+    const freezeBtn = document.getElementById('admin-gem-freeze-btn');
+    if (isGemFrozen) {
+        freezeBtn.innerText = "💥 땡!";
+        freezeBtn.className = "btn-gray gem-action-btn";
+    } else {
+        freezeBtn.innerText = "🧊 얼음!";
+        freezeBtn.className = "btn-blue gem-action-btn";
     }
 
     selectedStudentsForGems = []; 
