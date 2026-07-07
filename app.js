@@ -24,6 +24,7 @@ let pendingRequests = [];
 let adminShopReturnPage = 'admin-menu-page'; 
 let adminManageReturnPage = 'admin-menu-page';
 let isChatMuted = false; 
+let isGemFrozen = false; 
 
 let tempShopItems = [];
 let localStudentAccounts = {}; 
@@ -187,6 +188,38 @@ db.ref('chatState/isMuted').on('value', (snapshot) => {
         if (isAdmin && muteBtn) {
             muteBtn.innerText = "음소거";
             muteBtn.className = "btn-gray chat-action-btn";
+        }
+    }
+});
+
+// 보석 거래 잠금(얼음/땡) 리스너
+db.ref('gemState/isFrozen').on('value', (snapshot) => {
+    isGemFrozen = snapshot.val() || false;
+    const freezeBtn = document.getElementById('admin-gem-freeze-btn');
+    const giftBtn = document.getElementById('student-gift-btn');
+    const requestBtn = document.getElementById('student-request-btn');
+    const acceptBtn = document.getElementById('accept-request-btn');
+
+    if (isGemFrozen) {
+        if (!isAdmin && giftBtn && requestBtn && acceptBtn) {
+            giftBtn.disabled = true;    giftBtn.className = "btn-disabled gem-action-btn";
+            requestBtn.disabled = true; requestBtn.className = "btn-disabled gem-action-btn";
+            acceptBtn.disabled = true;  acceptBtn.className = "btn-disabled gem-action-btn";
+        }
+        if (isAdmin && freezeBtn) {
+            freezeBtn.innerText = "💥 땡!";
+            freezeBtn.className = "btn-red gem-action-btn";
+        }
+    } else {
+        if (!isAdmin && giftBtn && requestBtn) {
+            giftBtn.disabled = false;    giftBtn.className = "btn-green gem-action-btn";
+            requestBtn.disabled = false; requestBtn.className = "btn-cyan gem-action-btn";
+            // accept-request-btn은 여기서 건드리지 않음 — 대기 중인 조르기 요청 유무에 따라
+            // listenForGemRequests()가 이미 정확하게 활성/비활성을 관리하고 있음
+        }
+        if (isAdmin && freezeBtn) {
+            freezeBtn.innerText = "🧊 얼음!";
+            freezeBtn.className = "btn-gray gem-action-btn";
         }
     }
 });
@@ -733,6 +766,27 @@ function toggleMute() {
     });
 }
 
+function toggleGemFreeze() {
+    const newState = !isGemFrozen;
+    db.ref('gemState/isFrozen').set(newState);
+
+    if (newState) {
+        db.ref('gemRequests').remove(); // 대기 중이던 조르기 요청 전체 취소
+    }
+
+    const sysMsg = newState
+        ? '상티가 보석 거래를 잠갔습니다. 진행 중이던 조르기 요청은 모두 취소됩니다.'
+        : '상티가 보석 거래를 다시 열었습니다.';
+
+    db.ref('chatLog').push().set({
+        sender: 'system',
+        message: sysMsg,
+        isAlert: true,
+        alertColor: '#007bff',
+        timestamp: firebase.database.ServerValue.TIMESTAMP
+    });
+}
+
 function modifyGems(action) {
     if (selectedStudentsForGems.length === 0) { alert(`보석을 ${action === 'add' ? '지급' : '차감'}할 학생을 선택해 주세요.`); return; }
     const amountInput = document.getElementById('gem-control-amount'); const gemsToModify = parseInt(amountInput.value, 10);
@@ -754,6 +808,7 @@ function modifyGems(action) {
 }
 
 function giftGems() {
+    if (!isAdmin && isGemFrozen) return;
     if (selectedStudentsForGems.length === 0) return alert('선물할 친구를 선택해 주세요!');
     const amt = parseInt(document.getElementById('student-gem-amount').value, 10);
     if (isNaN(amt) || amt <= 0) return alert('올바른 보석 개수를 입력해 주세요.');
@@ -775,6 +830,7 @@ function giftGems() {
 }
 
 function requestGems() {
+    if (!isAdmin && isGemFrozen) return;
     if (selectedStudentsForGems.length === 0) return alert('조를 친구를 선택해 주세요!');
     const amt = parseInt(document.getElementById('student-gem-amount').value, 10);
     if (isNaN(amt) || amt <= 0) return alert('올바른 보석 개수를 입력해 주세요.');
@@ -821,6 +877,7 @@ function requestGems() {
 }
 
 function acceptGemRequest() {
+    if (!isAdmin && isGemFrozen) return;
     if (pendingRequests.length === 0) return;
     if (selectedStudentsForGems.length === 0) return alert('조르기를 수락할 친구를 대기실에서 먼저 선택해 주세요!');
     let myGems = localStudentAccounts[currentUser]?.gems || 0;
