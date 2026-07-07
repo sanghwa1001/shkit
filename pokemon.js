@@ -636,6 +636,13 @@ function openPokemonCatchPage() {
     pokeball.classList.remove('hidden');
     controlPanel.classList.remove('hidden');
 
+    // 이전 플레이를 그만하기/시간종료로 끝낸 경우 finishGameToResult()가 걸어둔
+    // isAnimating=true + 버튼 disabled 상태가 재입장 시에도 풀리지 않고 남아있어
+    // 액션박스 글자가 흐리게(opacity 0.6 + 회색) 보이는 문제를 방지
+    isAnimating = false;
+    [throwBtn, runawayBtn, chargeBtn].forEach(b => b.disabled = false);
+    refreshButtons();
+
     document.querySelector('.container').classList.add('game-mode');
     showPage('pokemon-catch-page');
     applyResponsiveScale();
