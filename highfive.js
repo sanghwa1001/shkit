@@ -47,5 +47,55 @@ function renderHighFiveRoom() {
         userDiv.innerHTML = `${badgeHtml}<img src="${avatarPath(avatarSrc)}" alt="아바타" class="online-user-avatar"><div style="display:flex; flex-direction:column; width:100%; flex: 1; justify-content: flex-end;"><span class="name-text-fit ${getNameClass(displayName)}">${displayName}</span><span style="font-size:10px; color:#ff9800; font-weight:bold; min-height:12px; line-height:1; margin-bottom:2px;">${(isMe) ? '(나)' : ''}</span></div>${statusTextHtml}`; listDiv.appendChild(userDiv);
     });
 }
-function sendHighFiveRequest() { if (!hfState.isStarted) return; if (!selectedHfUser || selectedHfUser === currentUser || hfParticipants[selectedHfUser]?.pairId != null) return; db.ref(`highfive/requests/${selectedHfUser}/${currentUser}`).set(Date.now()); selectedHfUser = null; renderHighFiveRoom(); }
-function acceptHighFive() { if (!hfState.isStarted || !selectedHfUser) return; const targetId = selectedHfUser; if ((hfRequests[currentUser] || {})[targetId] && hfParticipants[targetId]?.pairId == null) { const nextPairId = hfState.pairCount + 1; const pairColor = PAIR_COLORS[nextPairId % PAIR_COLORS.length]; let updates = {}; updates[`highfive/state/pairCount`] = nextPairId; updates[`highfive/participants/${currentUser}/pairId`] = nextPairId; updates[`highfive/participants/${currentUser}/pairColor`] = pairColor; updates[`highfive/participants/${targetId}/pairId`] = nextPairId; updates[`highfive/participants/${targetId}/pairColor`] = pairColor; updates[`highfive/requests/${currentUser}`] = null; updates[`highfive/requests/${targetId}`] = null; db.ref().update(updates).then(() => { selectedHfUser = null; }); } }
+function sendHighFiveRequest() { if (!hfState.isStarted) return; if (!selectedHfUser || selectedHfUser === currentUser || hfParticipants[selectedHfUser]?.pairId != null || hfParticipants[currentUser]?.pairId != null) return; db.ref(`highfive/requests/${selectedHfUser}/${currentUser}`).set(Date.now()); selectedHfUser = null; renderHighFiveRoom(); }
+function acceptHighFive() {
+    if (!hfState.isStarted || !selectedHfUser) return;
+    const targetId = selectedHfUser;
+
+    // 로컬 캐시(hfRequests/hfParticipants)는 리스너 전파 지연이 있을 수 있으므로,
+    // 실제로 페어링을 확정하기 직전엔 서버의 최신 상태를 직접 조회해서 사용
+    Promise.all([
+        db.ref('highfive/requests').once('value'),
+        db.ref('highfive/participants').once('value')
+    ]).then(([reqSnap, partSnap]) => {
+        const freshRequests = reqSnap.val() || {};
+        const freshParticipants = partSnap.val() || {};
+
+        const hasRequest = !!(freshRequests[currentUser] && freshRequests[currentUser][targetId]);
+        const targetAlreadyPaired = freshParticipants[targetId]?.pairId != null;
+        const selfAlreadyPaired = freshParticipants[currentUser]?.pairId != null;
+
+        if (!hasRequest || targetAlreadyPaired || selfAlreadyPaired) {
+            // 그 사이 상대가 이미 다른 사람과 매칭되었거나 요청이 사라진 경우 — 조용히 선택 해제 후 최신 상태로 재렌더링
+            selectedHfUser = null;
+            renderHighFiveRoom();
+            return;
+        }
+
+        // pairCount는 트랜잭션으로 원자적으로 증가시켜, 여러 쌍이 동시에 수락해도 번호가 겹치지 않도록 함
+        db.ref('highfive/state/pairCount').transaction(current => (current || 0) + 1).then(result => {
+            if (!result.committed) { selectedHfUser = null; renderHighFiveRoom(); return; }
+
+            const nextPairId = result.snapshot.val();
+            const pairColor = PAIR_COLORS[nextPairId % PAIR_COLORS.length];
+            let updates = {};
+            updates[`highfive/participants/${currentUser}/pairId`] = nextPairId;
+            updates[`highfive/participants/${currentUser}/pairColor`] = pairColor;
+            updates[`highfive/participants/${targetId}/pairId`] = nextPairId;
+            updates[`highfive/participants/${targetId}/pairColor`] = pairColor;
+
+            // 페어링이 확정된 두 사람이 "발신자(from)"로 걸려있는 모든 요청을 전부 정리
+            // (다른 사람에게 보내둔 요청까지 함께 지워서 유령 요청이 남지 않도록 함)
+            for (const receiverId in freshRequests) {
+                if (freshRequests[receiverId] && freshRequests[receiverId][currentUser] !== undefined) {
+                    updates[`highfive/requests/${receiverId}/${currentUser}`] = null;
+                }
+                if (freshRequests[receiverId] && freshRequests[receiverId][targetId] !== undefined) {
+                    updates[`highfive/requests/${receiverId}/${targetId}`] = null;
+                }
+            }
+
+            db.ref().update(updates).then(() => { selectedHfUser = null; });
+        });
+    });
+}
