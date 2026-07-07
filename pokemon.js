@@ -631,6 +631,11 @@ function openPokemonCatchPage() {
     resultScreen.classList.add('hidden');
     startBtn.disabled = false;
 
+    // 이전 플레이에서 결과 화면(showResultScreen)이 숨겨뒀던 pokeball/action-btns 복원
+    // (재입장 시 startGame() 호출 전까지도 대기화면 배경에 정상적으로 보여야 함)
+    pokeball.classList.remove('hidden');
+    controlPanel.classList.remove('hidden');
+
     document.querySelector('.container').classList.add('game-mode');
     showPage('pokemon-catch-page');
     applyResponsiveScale();
