@@ -779,13 +779,45 @@ function requestGems() {
     const amt = parseInt(document.getElementById('student-gem-amount').value, 10);
     if (isNaN(amt) || amt <= 0) return alert('올바른 보석 개수를 입력해 주세요.');
 
-    let targetNicks = [];
-    selectedStudentsForGems.forEach(id => {
-        db.ref(`gemRequests/${id}`).push({ from: currentUser, amount: amt, expiresAt: Date.now() + 60000 });
-        targetNicks.push(localStudentAccounts[id]?.nickname || id);
+    const now = Date.now();
+    const targets = [...selectedStudentsForGems];
+
+    // 대상별로 "내가 보낸(from === currentUser)" 요청이 아직 살아있는지(만료 전인지) 먼저 확인
+    // → 같은 사람에게 중복으로 조르기가 쌓여, 화면엔 1개만 보이는데 수락 시 전부 합산 차감되는 문제를 방지
+    Promise.all(targets.map(id =>
+        db.ref(`gemRequests/${id}`).once('value').then(snap => ({ id, val: snap.val() }))
+    )).then(results => {
+        const duplicateIds = [];
+        const newIds = [];
+        results.forEach(({ id, val }) => {
+            const hasActiveRequest = val && Object.values(val).some(req => req.from === currentUser && req.expiresAt && req.expiresAt > now);
+            (hasActiveRequest ? duplicateIds : newIds).push(id);
+        });
+
+        newIds.forEach(id => {
+            db.ref(`gemRequests/${id}`).push({ from: currentUser, amount: amt, expiresAt: Date.now() + 60000 });
+        });
+
+        if (newIds.length > 0) {
+            const newNicks = newIds.map(id => localStudentAccounts[id]?.nickname || id);
+            db.ref('chatLog').push().set({ sender: 'system', message: `${localStudentAccounts[currentUser]?.nickname || currentUser}이(가) ${newNicks.join(', ')}에게 보석 ${amt}개를 조르기했습니다. 🙏`, isAlert: true, alertColor: '#17a2b8', timestamp: firebase.database.ServerValue.TIMESTAMP });
+        }
+
+        let resultMessage;
+        if (duplicateIds.length === 0) {
+            resultMessage = '조르기 요청을 보냈습니다! (1분 후 자동 취소됩니다.)';
+        } else if (newIds.length === 0) {
+            resultMessage = '선택한 친구 모두에게 이미 조르기 요청을 보낸 상태입니다. 자동 취소(최대 1분)까지 기다려 주세요.';
+        } else {
+            const dupNicks = duplicateIds.map(id => localStudentAccounts[id]?.nickname || id);
+            const newNicks = newIds.map(id => localStudentAccounts[id]?.nickname || id);
+            resultMessage = `${dupNicks.join(', ')}에게는 이미 조르기 요청을 보낸 상태라 다시 보내지 않았습니다.\n${newNicks.join(', ')}에게는 조르기 요청을 보냈습니다! (1분 후 자동 취소됩니다.)`;
+        }
+
+        selectedStudentsForGems = [];
+        renderOnlineUsers();
+        alert(resultMessage);
     });
-    db.ref('chatLog').push().set({ sender: 'system', message: `${localStudentAccounts[currentUser]?.nickname || currentUser}이(가) ${targetNicks.join(', ')}에게 보석 ${amt}개를 조르기했습니다. 🙏`, isAlert: true, alertColor: '#17a2b8', timestamp: firebase.database.ServerValue.TIMESTAMP });
-    selectedStudentsForGems = []; renderOnlineUsers(); alert('조르기 요청을 보냈습니다! (1분 후 자동 취소됩니다.)');
 }
 
 function acceptGemRequest() {
