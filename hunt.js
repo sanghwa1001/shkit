@@ -459,7 +459,7 @@ function mhResetUltimateGauge() {
 //  몬스터 스폰
 // =====================================================
 function mhRefreshGif(el, filename) {
-    if (el) el.src = filename + '?t=' + Date.now();
+    if (el) el.src = filename + '#' + Date.now();
 }
 
 function mhSpawnMonster() {
