@@ -261,11 +261,12 @@ function mhForceStop() {
         clearTimeout(m.jumpTimer);
         clearTimeout(m.stopTimer);
         clearTimeout(m.dieTimer);
+        mhStopSpriteSheet(m.effect);
         if (m.element) m.element.remove();
         if (m.effect)  m.effect.remove();
     });
     mhMonsters = [];
-    mhProjectiles.forEach(p => { if (p.element) p.element.remove(); });
+    mhProjectiles.forEach(p => { mhStopSpriteSheet(p.img); if (p.element) p.element.remove(); });
     mhProjectiles = [];
     mhIsAttacking   = false;
     mhIsGameStarted = false;
@@ -347,8 +348,8 @@ function startMonsterHunterGame() {
 
     // GIF 사전 로드 — 캐시에 올려둬서 이펙트 첫 번째부터 즉시 재생
     [
-        'images/hunt/huntskill1.gif', 'images/hunt/huntskill2.gif', 'images/hunt/huntskill3.gif',
-        'images/hunt/huntskill4.gif', 'images/hunt/huntskill5.gif', 'images/hunt/huntskill6.gif',
+        'images/hunt/huntskill1.gif', 'images/hunt/huntskill2.png', 'images/hunt/huntskill3.png',
+        'images/hunt/huntskill4.gif', 'images/hunt/huntskill5.png', 'images/hunt/huntskill6.png',
         'images/hunt/huntcharacter2.gif',
         'images/hunt/huntmonster1.gif',  'images/hunt/huntmonster2.gif',  'images/hunt/huntmonster3.png',
         'images/hunt/huntmonster4.gif',  'images/hunt/huntmonster5.gif',  'images/hunt/huntmonster6.gif',
@@ -462,6 +463,88 @@ function mhRefreshGif(el, filename) {
     if (el) el.src = filename + '?t=' + Date.now();
 }
 
+// =====================================================
+//  스프라이트 시트 애니메이션 (huntskill2/3/5/6.png)
+//  - huntskill5는 좌우반전(scaleX(-1))으로 사용
+// =====================================================
+const MH_SPRITE_SHEETS = {
+    // 총 2프레임, 176×32 (88×32 프레임, 2열×1행, 빈칸 없음)
+    skill2: { src: 'images/hunt/huntskill2.png', frameCount: 2, cols: 2, rows: 1, frameW: 88,  frameH: 32,  mirrored: true },
+    // 총 5프레임, 492×272 (164×136 프레임, 3열×2행, 마지막 1칸은 빈칸)
+    skill3: { src: 'images/hunt/huntskill3.png', frameCount: 5, cols: 3, rows: 2, frameW: 164, frameH: 136, mirrored: false },
+    // 총 3프레임, 512×224 (256×112 프레임, 2열×2행, 마지막 1칸은 빈칸)
+    skill5: { src: 'images/hunt/huntskill5.png', frameCount: 3,  cols: 2, rows: 2, frameW: 256, frameH: 112, mirrored: true },
+    // 총 6프레임, 756×448 (252×224 프레임, 3열×2행, 빈칸 없음)
+    skill6: { src: 'images/hunt/huntskill6.png', frameCount: 6,  cols: 3, rows: 2, frameW: 252, frameH: 224, mirrored: false },
+};
+
+/**
+ * 스프라이트 시트를 img 엘리먼트에 프레임 단위로 재생
+ * (object-fit:none + object-position 트릭으로 시트에서 한 프레임만 잘라서 표시)
+ * ⚠️ mirrored 시트는 위치 이동/스케일(translate, scale 등)을 이 img가 아니라
+ *    "바깥 wrapper"에 걸어야 함. 좌우반전(scaleX(-1))은 이 img 자신의 중앙을
+ *    기준으로만 적용되므로, 위치용 transform과 섞이면 반전 기준점이 어긋나서
+ *    이펙트가 엉뚱한 곳(화면 밖)으로 튕겨나갈 수 있음.
+ *    (mirrored가 아닌 시트는 반전 자체가 없으므로 opts.transform으로 위치를
+ *    직접 지정해도 안전함 — 예: skill6의 'translate(-50%, 50%)' 센터링)
+ * @param {HTMLImageElement} el  - 표시할 img 엘리먼트 (position은 static 그대로 둘 것)
+ * @param {object} sheet         - MH_SPRITE_SHEETS 항목
+ * @param {object} opts
+ *   fps       {number}  초당 프레임 수 (기본 12)
+ *   loop      {boolean} 반복 재생 여부 (기본 false)
+ *   transform {string}  위치용 transform (mirrored:false인 시트에서만 적용됨)
+ *   onDone    {function} 반복하지 않을 때 마지막 프레임 이후 호출
+ */
+function mhPlaySpriteSheet(el, sheet, opts = {}) {
+    if (!el || !sheet) return;
+    const fps    = opts.fps || 12;
+    const loop   = !!opts.loop;
+    const onDone = opts.onDone;
+
+    mhStopSpriteSheet(el); // 같은 엘리먼트 재사용 시 기존 타이머 정리
+
+    el.src = sheet.src;
+    el.style.display     = 'block';
+    el.style.width       = sheet.frameW + 'px';
+    el.style.height       = sheet.frameH + 'px';
+    el.style.objectFit    = 'none';
+    // 반전은 항상 이 엘리먼트 자신의 중앙(기본 transform-origin: 50% 50%)을 기준으로 적용
+    // mirrored가 아닌 시트는 위치용 transform을 그대로 써도 안전함
+    el.style.transform     = sheet.mirrored ? 'scaleX(-1)' : (opts.transform || '');
+
+    const setFrame = (i) => {
+        const col = i % sheet.cols;
+        const row = Math.floor(i / sheet.cols);
+        el.style.objectPosition = `-${col * sheet.frameW}px -${row * sheet.frameH}px`;
+    };
+
+    let frame = 0;
+    setFrame(0);
+
+    el._mhSpriteTimer = setInterval(() => {
+        frame++;
+        if (frame >= sheet.frameCount) {
+            if (loop) {
+                frame = 0;
+                setFrame(0);
+            } else {
+                clearInterval(el._mhSpriteTimer);
+                el._mhSpriteTimer = null;
+                if (onDone) onDone();
+            }
+            return;
+        }
+        setFrame(frame);
+    }, 1000 / fps);
+}
+
+function mhStopSpriteSheet(el) {
+    if (el && el._mhSpriteTimer) {
+        clearInterval(el._mhSpriteTimer);
+        el._mhSpriteTimer = null;
+    }
+}
+
 function mhSpawnMonster() {
     if (!mhIsGameStarted || mhIsGameOver) return;
 
@@ -552,12 +635,13 @@ function mhMoveProjectiles() {
             const targetHitX = p.target.pos + 55;
             if (p.x >= targetHitX) {
                 const hit = p.target;
+                mhStopSpriteSheet(p.img);
                 p.element.remove();
                 mhProjectiles.splice(i, 1);
                 if (!hit.isDead) mhApplyHit(hit);
             }
         } else {
-            if (p.x > 850) { p.element.remove(); mhProjectiles.splice(i, 1); }
+            if (p.x > 850) { mhStopSpriteSheet(p.img); p.element.remove(); mhProjectiles.splice(i, 1); }
         }
     }
 }
@@ -696,24 +780,30 @@ function mhUseSkill() {
 }
 
 function mhSpawnProjectile(targetMonster) {
-    const projImg = document.createElement('img');
-    mhRefreshGif(projImg, 'images/hunt/huntskill2.gif');
-    projImg.className = 'mh-projectile';
+    const projWrap = document.createElement('div');
+    projWrap.className = 'mh-projectile'; // .mh-projectile 클래스의 translateY(50%)는 wrapper가 그대로 담당
     const startX = 190, startY = 168;
-    projImg.style.left   = startX + 'px';
-    projImg.style.bottom = startY + 'px';
-    mhGameCanvas.appendChild(projImg);
-    mhProjectiles.push({ element: projImg, x: startX, y: startY, target: targetMonster, speed: 18 });
+    projWrap.style.left   = startX + 'px';
+    projWrap.style.bottom = startY + 'px';
+    const projImg = document.createElement('img');
+    projWrap.appendChild(projImg);
+    mhGameCanvas.appendChild(projWrap);
+    // 반전(scaleX(-1))은 내부 img가 자기 중심 기준으로 담당 — wrapper의 위치와 서로 간섭하지 않음
+    mhPlaySpriteSheet(projImg, MH_SPRITE_SHEETS.skill2, { fps: 12, loop: true });
+    mhProjectiles.push({ element: projWrap, img: projImg, x: startX, y: startY, target: targetMonster, speed: 18 });
 }
 
 function mhApplyHit(m) {
-    mhRefreshGif(m.effect, 'images/hunt/huntskill3.gif');
     const hitX = m.pos + 55;
     m.effect.style.left      = hitX + 'px';
     m.effect.style.bottom    = '168px';
-    m.effect.style.transform = 'translate(-50%, 50%)';
     m.effect.style.display   = 'block';
-    setTimeout(() => { m.effect.style.display = 'none'; }, 500);
+    mhPlaySpriteSheet(m.effect, MH_SPRITE_SHEETS.skill3, {
+        fps: 12,
+        loop: false,
+        transform: 'translate(-50%, 50%)'
+    });
+    setTimeout(() => { mhStopSpriteSheet(m.effect); m.effect.style.display = 'none'; }, 500);
 
     m.hp--;
     if (m.hp > 0) {
@@ -768,23 +858,25 @@ function mhUseUltimate() {
 }
 
 function mhSpawnUltimateProjectile() {
-    const projImg = document.createElement('img');
-    mhRefreshGif(projImg, 'images/hunt/huntskill5.gif');
-    projImg.className = 'mh-projectile';
-    projImg.style.zIndex = '50';
+    const projWrap = document.createElement('div');
+    projWrap.className = 'mh-projectile'; // .mh-projectile 클래스의 translateY(50%)는 wrapper에 그대로 적용됨
+    projWrap.style.zIndex = '50';
     const startX = 190, startY = 168;
-    projImg.style.left   = startX + 'px';
-    projImg.style.bottom = startY + 'px';
-    mhGameCanvas.appendChild(projImg);
+    projWrap.style.left   = startX + 'px';
+    projWrap.style.bottom = startY + 'px';
+    const projImg = document.createElement('img');
+    projWrap.appendChild(projImg);
+    mhGameCanvas.appendChild(projWrap);
+    mhPlaySpriteSheet(projImg, MH_SPRITE_SHEETS.skill5, { fps: 12, loop: true });
 
     const hitMonsters = new Set();
     let x = startX;
     const SPEED = 9;
 
     function moveBullet() {
-        if (!mhIsGameStarted && !mhIsGameOver) { projImg.remove(); return; }
+        if (!mhIsGameStarted && !mhIsGameOver) { mhStopSpriteSheet(projImg); projWrap.remove(); return; }
         x += SPEED;
-        projImg.style.left = x + 'px';
+        projWrap.style.left = x + 'px';
         mhMonsters.forEach(m => {
             if (m.isDead || hitMonsters.has(m)) return;
             const hitX = m.pos + 55;
@@ -793,7 +885,7 @@ function mhSpawnUltimateProjectile() {
                 mhApplyUltimateKill(m);
             }
         });
-        if (x > 860) { projImg.remove(); return; }
+        if (x > 860) { mhStopSpriteSheet(projImg); projWrap.remove(); return; }
         requestAnimationFrame(moveBullet);
     }
     requestAnimationFrame(moveBullet);
@@ -801,13 +893,16 @@ function mhSpawnUltimateProjectile() {
 
 function mhApplyUltimateKill(m) {
     if (m.isDead) return;
-    mhRefreshGif(m.effect, 'images/hunt/huntskill6.gif');
     const hitX = m.pos + 55;
     m.effect.style.left      = hitX + 'px';
     m.effect.style.bottom    = '168px';
-    m.effect.style.transform = 'translate(-50%, 50%)';
     m.effect.style.display   = 'block';
-    setTimeout(() => { m.effect.style.display = 'none'; }, 500);
+    mhPlaySpriteSheet(m.effect, MH_SPRITE_SHEETS.skill6, {
+        fps: 12,
+        loop: false,
+        transform: 'translate(-50%, 50%)'
+    });
+    setTimeout(() => { mhStopSpriteSheet(m.effect); m.effect.style.display = 'none'; }, 500);
 
     m.isDead = true;
     clearTimeout(m.jumpTimer); clearTimeout(m.stopTimer);
@@ -816,6 +911,7 @@ function mhApplyUltimateKill(m) {
 
     setTimeout(() => { m.element.style.opacity = '0'; }, 50);
     m.dieTimer = setTimeout(() => {
+        mhStopSpriteSheet(m.effect);
         m.element.remove(); m.effect.remove();
         const idx = mhMonsters.indexOf(m);
         if (idx > -1) mhMonsters.splice(idx, 1);
