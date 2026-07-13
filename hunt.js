@@ -10,6 +10,7 @@ let mhStartScreen    = null;
 let mhGameoverScreen = null;
 let mhPlayerImg      = null;
 let mhPlayerEffect   = null;
+let mhPlayerEffectImg = null; // mh-player-effect(wrapper div) 내부의 실제 스프라이트 img
 let mhScoreDisplay   = null;
 let mhFinalScore     = null;
 let mhUltimateBtn    = null;
@@ -112,6 +113,13 @@ function mhInitDom() {
     mhGameoverScreen = document.getElementById('mh-gameover-screen');
     mhPlayerImg      = document.getElementById('mh-player-img');
     mhPlayerEffect   = document.getElementById('mh-player-effect');
+    // wrapper(mh-player-effect)는 위치/스케일 담당, 내부 img는 프레임 재생/반전 담당 — 1회만 생성해 재사용
+    if (!mhPlayerEffect.querySelector('img')) {
+        mhPlayerEffectImg = document.createElement('img');
+        mhPlayerEffect.appendChild(mhPlayerEffectImg);
+    } else {
+        mhPlayerEffectImg = mhPlayerEffect.querySelector('img');
+    }
     mhScoreDisplay   = document.getElementById('mh-score-display');
     mhFinalScore     = document.getElementById('mh-final-score');
     mhUltimateBtn    = document.getElementById('mh-ultimate-btn');
@@ -244,6 +252,7 @@ function mhResetUI() {
     if (mhQuizChoices) mhQuizChoices.style.display  = 'none';
     mhScoreDisplay.textContent = '0';
     mhPlayerImg.src = 'images/hunt/huntcharacter1.gif';
+    mhStopSpriteSheet(mhPlayerEffectImg);
     mhPlayerEffect.style.display = 'none';
     mhResetUltimateGauge();
 }
@@ -348,8 +357,8 @@ function startMonsterHunterGame() {
 
     // GIF 사전 로드 — 캐시에 올려둬서 이펙트 첫 번째부터 즉시 재생
     [
-        'images/hunt/huntskill1.gif', 'images/hunt/huntskill2.png', 'images/hunt/huntskill3.png',
-        'images/hunt/huntskill4.gif', 'images/hunt/huntskill5.png', 'images/hunt/huntskill6.png',
+        'images/hunt/huntskill1.png', 'images/hunt/huntskill2.png', 'images/hunt/huntskill3.png',
+        'images/hunt/huntskill4.png', 'images/hunt/huntskill5.png', 'images/hunt/huntskill6.png',
         'images/hunt/huntcharacter2.gif',
         'images/hunt/huntmonster1.gif',  'images/hunt/huntmonster2.gif',  'images/hunt/huntmonster3.png',
         'images/hunt/huntmonster4.gif',  'images/hunt/huntmonster5.gif',  'images/hunt/huntmonster6.gif',
@@ -368,6 +377,7 @@ function startMonsterHunterGame() {
     mhResetUltimateGauge();
 
     mhPlayerImg.src = 'images/hunt/huntcharacter1.gif';
+    mhStopSpriteSheet(mhPlayerEffectImg);
     mhPlayerEffect.style.display = 'none';
 
     mhStartScreen.classList.remove('show');
@@ -399,6 +409,7 @@ function resetMonsterHunterGame() {
     mhResetUltimateGauge();
 
     mhPlayerImg.src = 'images/hunt/huntcharacter1.gif';
+    mhStopSpriteSheet(mhPlayerEffectImg);
     mhPlayerEffect.style.display = 'none';
     mhGameoverScreen.classList.remove('show');
 
@@ -464,14 +475,58 @@ function mhRefreshGif(el, filename) {
 }
 
 // =====================================================
-//  스프라이트 시트 애니메이션 (huntskill2/3/5/6.png)
-//  - huntskill5는 좌우반전(scaleX(-1))으로 사용
+//  스프라이트 시트 애니메이션 (huntskill1/2/3/4/5/6.png)
+//  - huntskill4, huntskill5는 좌우반전(scaleX(-1))으로 사용
 // =====================================================
 const MH_SPRITE_SHEETS = {
+    // 총 9프레임, 816×564 (272×188 프레임, 3열×3행, 빈칸 없음)
+    // ⚠️ 실제 디자인 캔버스는 150×184 (ruid ecb222dd...)
+    // frameOffsets: 셀(272×188)이 프레임 중 최대폭(272)×최대높이(188)와 정확히 일치 →
+    // 트림된 프레임이 셀 중앙에 배치된 것으로 보고 pivot 기준 프레임0 상대 보정값 계산.
+    skill1: {
+        src: 'images/hunt/huntskill1.png', frameCount: 9, cols: 3, rows: 3, frameW: 272, frameH: 188,
+        canvasW: 150, canvasH: 184, mirrored: true,
+        frameOffsets: [
+            { tx: 0,  ty: 0 },
+            { tx: 1,  ty: 1 },
+            { tx: 1,  ty: 2 },
+            { tx: 3,  ty: 1 },
+            { tx: 4,  ty: 1 },
+            { tx: 20, ty: 1 },
+            { tx: 26, ty: 2 },
+            { tx: 30, ty: 1 },
+            { tx: 50, ty: 1 },
+        ],
+    },
     // 총 2프레임, 176×32 (88×32 프레임, 2열×1행, 빈칸 없음)
     skill2: { src: 'images/hunt/huntskill2.png', frameCount: 2, cols: 2, rows: 1, frameW: 88,  frameH: 32,  mirrored: true },
     // 총 5프레임, 492×272 (164×136 프레임, 3열×2행, 마지막 1칸은 빈칸)
     skill3: { src: 'images/hunt/huntskill3.png', frameCount: 5, cols: 3, rows: 2, frameW: 164, frameH: 136, mirrored: false },
+    // 총 14프레임, 2080×1424 (520×356 프레임, 4열×4행, 마지막 2칸은 빈칸)
+    // ⚠️ 실제 디자인 캔버스는 320×292 — 프레임 셀(520×356)은 패딩 포함 크기라 스케일 계산엔 canvasW/H를 써야 함
+    // frameOffsets: MSW 리소스팩의 프레임별 pivot 데이터(ruid 380e3a97...)로 역산한 보정값.
+    // 셀(520×356)이 프레임 중 최대폭(520)×최대높이(356)와 정확히 일치 → 각 프레임이 트림된 뒤
+    // 셀 중앙에 배치된 것으로 보고, pivot이 항상 같은 화면 위치에 오도록 프레임0 기준 상대 이동값을 계산함.
+    skill4: {
+        src: 'images/hunt/huntskill4.png', frameCount: 14, cols: 4, rows: 4, frameW: 520, frameH: 356,
+        canvasW: 320, canvasH: 292, mirrored: true,
+        frameOffsets: [
+            { tx: 0,    ty: 0 },
+            { tx: -56,  ty: 21 },
+            { tx: -85,  ty: 15 },
+            { tx: -68,  ty: 16 },
+            { tx: -57,  ty: 4 },
+            { tx: -54,  ty: -48 },
+            { tx: -100, ty: -10 },
+            { tx: -74,  ty: -24 },
+            { tx: -71,  ty: -4 },
+            { tx: -34,  ty: -8 },
+            { tx: -23,  ty: -8 },
+            { tx: -24,  ty: -7 },
+            { tx: 4,    ty: -8 },
+            { tx: 117,  ty: -8 },
+        ],
+    },
     // 총 3프레임, 512×224 (256×112 프레임, 2열×2행, 마지막 1칸은 빈칸)
     skill5: { src: 'images/hunt/huntskill5.png', frameCount: 3,  cols: 2, rows: 2, frameW: 256, frameH: 112, mirrored: true },
     // 총 6프레임, 756×448 (252×224 프레임, 3열×2행, 빈칸 없음)
@@ -488,7 +543,7 @@ const MH_SPRITE_SHEETS = {
  *    (mirrored가 아닌 시트는 반전 자체가 없으므로 opts.transform으로 위치를
  *    직접 지정해도 안전함 — 예: skill6의 'translate(-50%, 50%)' 센터링)
  * @param {HTMLImageElement} el  - 표시할 img 엘리먼트 (position은 static 그대로 둘 것)
- * @param {object} sheet         - MH_SPRITE_SHEETS 항목
+ * @param {object} sheet         - MH_SPRITE_SHEETS 항목 (frameOffsets가 있으면 프레임별 흔들림 보정 적용)
  * @param {object} opts
  *   fps       {number}  초당 프레임 수 (기본 12)
  *   loop      {boolean} 반복 재생 여부 (기본 false)
@@ -508,14 +563,23 @@ function mhPlaySpriteSheet(el, sheet, opts = {}) {
     el.style.width       = sheet.frameW + 'px';
     el.style.height       = sheet.frameH + 'px';
     el.style.objectFit    = 'none';
-    // 반전은 항상 이 엘리먼트 자신의 중앙(기본 transform-origin: 50% 50%)을 기준으로 적용
-    // mirrored가 아닌 시트는 위치용 transform을 그대로 써도 안전함
-    el.style.transform     = sheet.mirrored ? 'scaleX(-1)' : (opts.transform || '');
+
+    // 프레임별 transform 계산: (흔들림 보정 translate) + (반전 or 위치용 transform)
+    const buildTransform = (i) => {
+        const off = sheet.frameOffsets && sheet.frameOffsets[i];
+        const correction = off ? `translate(${off.tx}px, ${off.ty}px)` : '';
+        // mirrored: 보정을 먼저 원본 좌표계에서 적용한 뒤 전체를 반전해야 방향이 맞음
+        // → CSS 함수 목록은 오른쪽부터 적용되므로 'scaleX(-1) translate(...)' 순서로 작성
+        return sheet.mirrored
+            ? `scaleX(-1) ${correction}`.trim()
+            : `${opts.transform || ''} ${correction}`.trim();
+    };
 
     const setFrame = (i) => {
         const col = i % sheet.cols;
         const row = Math.floor(i / sheet.cols);
         el.style.objectPosition = `-${col * sheet.frameW}px -${row * sheet.frameH}px`;
+        el.style.transform = buildTransform(i);
     };
 
     let frame = 0;
@@ -740,6 +804,7 @@ function mhTriggerGameOver() {
     if (mhQuizPanel)   mhQuizPanel.style.display   = 'none';
     if (mhQuizChoices) mhQuizChoices.style.display  = 'none';
     mhPlayerImg.src = 'images/hunt/huntcharacter1.gif';
+    mhStopSpriteSheet(mhPlayerEffectImg);
     mhPlayerEffect.style.display = 'none';
     mhResetUltimateGauge();
 
@@ -755,15 +820,24 @@ function mhUseSkill() {
     mhIsAttacking = true;
 
     mhRefreshGif(mhPlayerImg, 'images/hunt/huntcharacter2.gif');
-    mhRefreshGif(mhPlayerEffect, 'images/hunt/huntskill1.gif');
     mhPlayerEffect.style.display = 'block';
+    // wrapper(mhPlayerEffect)는 위치/스케일(기존 translateX(-50%) 센터링 + translate/scale)을 담당
+    // wrapper(mhPlayerEffect)는 이제 skill4(ultWrap)와 동일하게 캔버스 절대좌표(bottom:137px; left:50px) 기준.
+    // translateX(-50%) 없이 translate(tx,ty) 값만으로 위치를 잡음 — 화면상 위치는 이전과 동일하도록 환산해둠.
+    mhPlayerEffect.style.transform = 'translate(-20px, 55px) scale(1.00)';
+    // 내부 img(mhPlayerEffectImg)는 반전(scaleX(-1))과 프레임별 pivot 보정을 자기 중심 기준으로 담당
+    const MH_SKILL1_FPS = 16;
+    mhPlaySpriteSheet(mhPlayerEffectImg, MH_SPRITE_SHEETS.skill1, { fps: MH_SKILL1_FPS, loop: false });
 
     mhAttackTimer = setTimeout(() => {
         mhPlayerImg.src = 'images/hunt/huntcharacter1.gif';
+        mhStopSpriteSheet(mhPlayerEffectImg);
         mhPlayerEffect.style.display = 'none';
         mhIsAttacking = false;
     }, 500);
 
+    // huntskill1 이펙트 재생 도중 화살(huntskill2) 발사 (체감상 자연스러운 타이밍으로 350ms 고정)
+    const mhSkill1Duration = 350;
     mhSkillTimer = setTimeout(() => {
         if (!mhIsGameStarted || mhIsGameOver) return; // 게임 종료 후 발사체 생성 차단
         const alreadyTargeted = new Set(mhProjectiles.map(p => p.target).filter(Boolean));
@@ -776,7 +850,7 @@ function mhUseSkill() {
         } else {
             mhSpawnProjectile(null);
         }
-    }, 200);
+    }, mhSkill1Duration);
 }
 
 function mhSpawnProjectile(targetMonster) {
@@ -837,22 +911,28 @@ function mhUseUltimate() {
     mhIsAttacking = true;
     mhResetUltimateGauge();
 
-    const ultScale  = (186 * 1.8) / 400;
+    // ultScale: 1.00배 고정 (프레임 원본 크기 그대로 표시)
+    const ultScale  = 0.75;
+    const ultWrap   = document.createElement('div');
+    ultWrap.id      = 'mh-ultimate-effect';
+    ultWrap.style.cssText = `position:absolute; bottom:137px; left:50px; z-index:50;
+        transform:translate(-75px,105px) scale(${ultScale}); transform-origin:left bottom;`;
     const ultEffect = document.createElement('img');
-    ultEffect.id    = 'mh-ultimate-effect';
-    mhRefreshGif(ultEffect, 'images/hunt/huntskill4.gif');
-    ultEffect.style.cssText = `position:absolute; bottom:137px; left:50px; z-index:50;
-        transform:translate(-77px,127px) scale(${ultScale}); transform-origin:left bottom;`;
-    mhGameCanvas.appendChild(ultEffect);
+    ultWrap.appendChild(ultEffect);
+    mhGameCanvas.appendChild(ultWrap);
+    // 반전(scaleX(-1))은 내부 img가 자기 중심 기준으로 담당 — wrapper의 위치/스케일과 서로 간섭하지 않음
+    mhPlaySpriteSheet(ultEffect, MH_SPRITE_SHEETS.skill4, { fps: 16, loop: false });
 
     mhRefreshGif(mhPlayerImg, 'images/hunt/huntcharacter2.gif');
+    mhStopSpriteSheet(mhPlayerEffectImg);
     mhPlayerEffect.style.display = 'none';
 
     mhUltTimer1 = setTimeout(() => { mhSpawnUltimateProjectile(); }, 550);
 
     mhUltTimer2 = setTimeout(() => {
         mhPlayerImg.src = 'images/hunt/huntcharacter1.gif';
-        if (ultEffect.parentNode) ultEffect.remove();
+        mhStopSpriteSheet(ultEffect);
+        if (ultWrap.parentNode) ultWrap.remove();
         mhIsAttacking = false;
     }, 980);
 }

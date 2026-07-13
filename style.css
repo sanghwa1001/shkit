@@ -627,7 +627,7 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
     -webkit-user-drag: none;
 }
 #mh-player-effect {
-    transform: translate(-155px, 45px) scale(0.85) !important;
+    /* transform은 JS(mhPlaySpriteSheet)가 프레임별 보정과 함께 인라인으로 설정함 — !important 금지 */
     transform-origin: left bottom;
 }
 
