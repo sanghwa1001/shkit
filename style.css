@@ -1342,9 +1342,7 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
     transform: translateX(-50%) scale(1);
     transform-origin: center center;
     width: var(--monster-size);
-    height: var(--monster-size); /* 패치 전(96x96 고정 캔버스) 스프라이트와 동일한 효과를 내기 위해 세로도 고정 */
-    object-fit: contain;         /* 비율 유지한 채 고정 박스 안에 맞춤 — 포켓몬마다 이미지 비율이 달라도 크기/위치가 항상 균일 */
-    object-position: center;
+    height: auto;
     z-index: 1;
     transition: opacity 0.4s ease-in, transform 0.4s ease-in;
     image-rendering: pixelated;
@@ -1366,9 +1364,7 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
     left: 50%;
     transform: translateX(-50%);
     width: var(--monster-size);
-    height: var(--monster-size); /* #monster와 동일하게 세로 고정 */
-    object-fit: contain;
-    object-position: center;
+    height: auto;
     z-index: 2;
     pointer-events: none;
 }
