@@ -113,12 +113,14 @@ const SHAKE_PAUSE             = 350;  // ms - 흔들림 사이 또는 탈출 전
 const CAPTURE_CHAR_DELAY      = 42;   // ms - 포획 메시지 한 글자당 타이핑 속도 (기존 60 → 70%)
 const CAPTURE_MESSAGE_WAIT    = 1000; // ms - 메시지 완성 후 다음 몬스터로 넘어가기까지 대기 시간
 
-const MONSTER_MIN = 1;    // animated/0001.gif
-const MONSTER_MAX = 386;  // animated/0386.gif
+// 몬스터 등장 풀: POKEMON_DATA(1~649번, 5세대까지)의 모든 키(폼 차이 포함)를 그대로 사용.
+// 과거 3세대(1~386) 구간처럼 "번호 범위" 방식이 아니라, 폼 차이("386-attack" 등) 키도
+// 자연스럽게 섞여 등장하도록 POKEMON_DATA에 있는 키 목록 자체를 등장 풀로 삼음.
+const MONSTER_POOL = Object.keys(POKEMON_DATA);
 
 const SHINY_CHANCE         = 0.1;   // 10% 확률로 shiny 등장
 const SHINY_CP_MULTIPLIER  = 2;     // shiny 포획 시 점수(CP)에 적용되는 배율 (포획 확률/실패 모션에는 영향 없음)
-const SHINY_EFFECT_DURATION = 1500; // ms - animated/shiny/0000.gif 1회 재생 시간(실측 약 1.48초)
+const SHINY_EFFECT_DURATION = 1500; // ms - animated/shiny/0.gif 1회 재생 시간(실측 약 1.48초)
 
 // list.xlsx 기반 POKEMON_DATA(pokemon_data.js)에서 종족값 범위 계산
 const BST_VALUES = Object.values(POKEMON_DATA).map(p => p.bst);
@@ -258,17 +260,17 @@ function pickFailType(bst) {
     return 3;
 }
 
-// animated/0001.gif ~ animated/0386.gif 중 랜덤 선택 (10% 확률로 shiny 폴더 사용)
+// MONSTER_POOL(1~649번 + 폼 차이) 중 랜덤 선택 (10% 확률로 shiny 폴더 사용)
+// 이미지 파일명은 패딩 없는 그대로("1.gif", "386-attack.gif" 등)를 사용함
 function pickRandomMonster() {
-    const num = Math.floor(Math.random() * (MONSTER_MAX - MONSTER_MIN + 1)) + MONSTER_MIN;
-    const padded = String(num).padStart(4, '0');
+    const id = MONSTER_POOL[Math.floor(Math.random() * MONSTER_POOL.length)];
     const isShiny = Math.random() < SHINY_CHANCE;
     const folder  = isShiny ? 'images/pokemon/pokemon/animated/shiny' : 'images/pokemon/pokemon/animated';
-    const info = POKEMON_DATA[padded] || { name: '???', bst: 0 };
+    const info = POKEMON_DATA[id] || { name: '???', bst: 0 };
     // bst: 포획 확률/실패 모션 계산에 쓰이는 원본 종족값 (shiny 여부와 무관하게 항상 동일)
     // effectiveBst: 표시/점수 계산에 쓰이는 값 (shiny면 2배)
     const effectiveBst = isShiny ? info.bst * SHINY_CP_MULTIPLIER : info.bst;
-    return { id: padded, src: `${folder}/${padded}.gif`, isShiny, name: info.name, bst: info.bst, effectiveBst };
+    return { id, src: `${folder}/${id}.gif`, isShiny, name: info.name, bst: info.bst, effectiveBst };
 }
 
 // 이미지를 미리 요청해서 브라우저 캐시에 올려둠 (실제 화면 전환/페이드인 전에 미리 호출)
@@ -293,7 +295,7 @@ function updateMonsterInfo(picked) {
 
 // shiny 등장 이펙트 — 몬스터와 겹쳐서 1회만 보이도록 재생 (원본 gif는 무한루프라 타이머로 직접 종료)
 function playShinyEffect() {
-    shinyEffect.src = 'images/pokemon/pokemon/animated/shiny/0000.gif?play=' + Date.now();
+    shinyEffect.src = 'images/pokemon/pokemon/animated/shiny/0.gif?play=' + Date.now();
     shinyEffect.classList.remove('hidden');
     setTimeout(() => {
         shinyEffect.classList.add('hidden');
