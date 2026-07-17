@@ -853,11 +853,13 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
     );
 
     /*
-     * 착지 겹침 비율: 도트 디자인 패치 이전 원본 레이아웃(monster-top 50px,
-     * dropped bottom 240px)에서 몬스터 아랫변과 포켓볼 윗변이 겹치던 정도(~31.33px).
-     * 몬스터 위치가 바뀌어도 이 겹침 폭을 그대로 유지하기 위한 기준값.
+     * 착지 겹침 비율: 원래는 도트 디자인 패치 이전 레이아웃의 겹침 정도(~31.33px)를
+     * 그대로 유지하려던 값이었으나, 5세대 확장 이미지팩에서 일부 대형 포켓몬(발밑
+     * 여백이 매우 적은 스프라이트)이 열린 몬스터볼과 겹치는 문제가 발견되어 0으로
+     * 낮춤. 몬스터 크기/이미지팩이 바뀌어도 항상 안전하도록, 공이 몬스터 박스의
+     * 아랫변보다 위로 파고들지 않게(겹치지 않게) 착지 지점을 그만큼 더 아래로 내림.
      */
-    --land-overlap: 31.33px;
+    --land-overlap: 0px;
     --drop-bottom: calc(
         var(--container-height) - var(--ball-size)
         - var(--monster-top) - var(--monster-size)
