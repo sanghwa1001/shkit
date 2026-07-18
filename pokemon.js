@@ -128,7 +128,7 @@ const BST_MIN = Math.min(...BST_VALUES);
 const BST_MAX = Math.max(...BST_VALUES);
 
 const CATCH_PROB_MAX = 0.9;   // 종족값 최저 몬스터의 포획 성공률
-const CATCH_PROB_MIN = 0.15;  // 종족값 최고 몬스터의 포획 성공률
+const CATCH_PROB_MIN = 0.10;  // 종족값 최고 몬스터(아르세우스, BST 720)의 포획 성공률
 
 // 현재 라운드 몬스터의 종족값 / 이름 / 번호(id) (포획 확률·실패 모션 결정, 포획 메시지·목록에 사용)
 let currentBst = 0;          // 원본 종족값 (포획 확률/실패 모션 계산 전용)
@@ -251,9 +251,11 @@ function getCatchProbability(bst) {
 // 종족값이 높을수록 실패 모션 1(무저항 탈출)이 잦고, 3(가장 오래 저항)은 드물어짐
 function pickFailType(bst) {
     const t = (bst - BST_MIN) / (BST_MAX - BST_MIN);
-    const w1 = 0.2 + 0.5 * t;   // 0.2 ~ 0.7
-    const w3 = 0.7 - 0.5 * t;   // 0.7 ~ 0.2
-    const w2 = 1 - w1 - w3;     // 항상 0.1
+    // 해너츠(CP 최저, t=0): 실패1/2/3 = 20/30/50
+    // 아르세우스(CP 최고, t=1): 실패1/2/3 = 50/30/20 (같은 세 숫자를 반대로 배정)
+    const w1 = 0.2 + 0.3 * t;  // 20% ~ 50% (무저항 탈출, 어려울수록 ↑)
+    const w3 = 0.5 - 0.3 * t;  // 50% ~ 20% (오래 저항, 쉬울수록 ↑)
+    const w2 = 1 - w1 - w3;    // 항상 30% (양 끝 값이 같아 기울기가 상쇄됨)
     const r = Math.random();
     if (r < w1) return 1;
     if (r < w1 + w2) return 2;
