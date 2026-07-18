@@ -121,6 +121,12 @@ const MONSTER_POOL = Object.keys(POKEMON_DATA);
 const SHINY_CHANCE         = 0.1;   // 10% 확률로 shiny 등장
 const SHINY_CP_MULTIPLIER  = 2;     // shiny 포획 시 점수(CP)에 적용되는 배율 (포획 확률/실패 모션에는 영향 없음)
 const SHINY_EFFECT_DURATION = 1500; // ms - animated/shiny/0.gif 1회 재생 시간(실측 약 1.48초)
+// 아래 세 경로는 프리로드와 실제 재생 양쪽에서 항상 같은 문자열을 쓰도록 상수로 관리.
+// 쿼리스트링을 붙이지 않아야 브라우저 캐시가 재사용됨 (재생 직전 항상 다른 src가 이미
+// 들어있는 흐름이라, 쿼리스트링 없이도 브라우저가 알아서 처음부터 다시 재생해줌)
+const SHINY_EFFECT_SRC  = 'images/pokemon/pokemon/animated/shiny/0.gif';
+const POKEBALL_OPEN_SRC  = 'images/pokemon/pokeball/open.gif';
+const POKEBALL_CATCH_SRC = 'images/pokemon/pokeball/catch.gif';
 
 // list.xlsx 기반 POKEMON_DATA(pokemon_data.js)에서 종족값 범위 계산
 const BST_VALUES = Object.values(POKEMON_DATA).map(p => p.bst);
@@ -306,8 +312,11 @@ function updateMonsterInfo(picked) {
 }
 
 // shiny 등장 이펙트 — 몬스터와 겹쳐서 1회만 보이도록 재생 (원본 gif는 무한루프라 타이머로 직접 종료)
+// 호출부(initGame/runRunAway)에서 재생 직전 항상 shinyEffect.src=''로 비워두기 때문에,
+// 여기서 쿼리스트링 없는 고정 경로를 대입해도 브라우저가 "새로 표시"로 인식해 처음부터
+// 재생되면서도 캐시를 그대로 재사용함 (게임 시작 시 미리 받아둔 캐시가 활용됨)
 function playShinyEffect() {
-    shinyEffect.src = 'images/pokemon/pokemon/animated/shiny/0.gif?play=' + Date.now();
+    shinyEffect.src = SHINY_EFFECT_SRC;
     shinyEffect.classList.remove('hidden');
     setTimeout(() => {
         shinyEffect.classList.add('hidden');
@@ -400,7 +409,7 @@ function escapeMonster() {
 
 // 탈출 연출 — open.gif 시작과 동시에 몬스터 탈출, 500ms 후 콜백
 function openAndEscape(callback) {
-    pokeball.src = 'images/pokemon/pokeball/open.gif?play=' + Date.now(); // 루프 없는 gif, 마지막 프레임에서 자동 정지
+    pokeball.src = POKEBALL_OPEN_SRC; // 루프 없는 gif, 마지막 프레임에서 자동 정지. 직전엔 항상 다른 src(리셋된 1.png 등)라 캐시 재사용하며 처음부터 재생됨
     escapeMonster();
     setTimeout(() => { if (callback) callback(); }, ESCAPE_CALLBACK_WAIT);
 }
@@ -421,7 +430,7 @@ function runCapture(onLanded) {
 
         // 올라가는 도중 열리기 (루프 없는 gif라 마지막 프레임에서 자동 정지)
         setTimeout(() => {
-            pokeball.src = 'images/pokemon/pokeball/open.gif?play=' + Date.now();
+            pokeball.src = POKEBALL_OPEN_SRC;
         }, OPEN_DELAY);
 
         // 정점에서 몬스터 흡수 시작
@@ -461,7 +470,7 @@ function runCapture(onLanded) {
 // 흔들기 N회 후 콜백 (각 흔들림 사이 SHAKE_PAUSE 대기)
 function shakeN(count, onDone) {
     if (count === 0) { onDone(); return; }
-    pokeball.src = 'images/pokemon/pokeball/catch.gif?play=' + Date.now();
+    pokeball.src = POKEBALL_CATCH_SRC; // 직전엔 항상 1.png로 리셋되어 있어 캐시 재사용하며 처음부터 재생됨
     setTimeout(() => {
         pokeball.src = 'images/pokemon/pokeball/1.png';
         if (count > 1) {
@@ -670,6 +679,12 @@ function openPokemonCatchPage() {
     document.querySelector('.container').classList.add('game-mode');
     showPage('pokemon-catch-page');
     applyResponsiveScale();
+
+    // 샤이니 이펙트/포켓볼 열림·흔들림 gif는 몬스터와 달리 항상 고정된 파일 하나씩뿐이라,
+    // 게임 진입 시점에 미리 받아두면 실제 재생 시 로딩 지연 없이 바로 나타남 (결과를 기다릴 필요는 없음)
+    preloadImage(SHINY_EFFECT_SRC);
+    preloadImage(POKEBALL_OPEN_SRC);
+    preloadImage(POKEBALL_CATCH_SRC);
 }
 
 // "이전으로" 버튼: 로비의 게임 선택 화면으로 복귀
