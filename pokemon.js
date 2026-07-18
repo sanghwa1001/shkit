@@ -668,6 +668,11 @@ function openPokemonCatchPage() {
     document.querySelector('.container').classList.add('game-mode');
     showPage('pokemon-catch-page');
     applyResponsiveScale();
+
+    // 샤이니 이펙트(shiny/0.gif)는 몬스터와 달리 항상 고정된 파일 하나뿐이라,
+    // 게임 진입 시점에 미리 한 번만 받아두면 실제로 첫 샤이니가 등장할 때(있다면)
+    // 이미 캐시되어 있어 로딩 지연 없이 바로 재생됨. 결과를 기다릴 필요는 없음.
+    preloadImage('images/pokemon/pokemon/animated/shiny/0.gif');
 }
 
 // "이전으로" 버튼: 로비의 게임 선택 화면으로 복귀
