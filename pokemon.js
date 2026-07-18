@@ -273,12 +273,22 @@ function pickRandomMonster() {
     return { id, src: `${folder}/${id}.gif`, isShiny, name: info.name, bst: info.bst, effectiveBst };
 }
 
-// 이미지를 미리 요청해서 브라우저 캐시에 올려둠 (실제 화면 전환/페이드인 전에 미리 호출)
-// 온라인 배포 환경(GitHub Pages, Firebase Hosting 등)에서 네트워크 왕복 지연으로 인해
-// 몬스터 이미지가 hp바/텍스트보다 늦게 나타나는 현상을 줄이기 위함
+// 이미지를 미리 요청해서 브라우저 캐시에 올려두고, 실제로 로딩이 끝날 때까지(또는 최대
+// PRELOAD_TIMEOUT_MS까지) 기다리는 Promise를 반환함.
+// 온라인 배포 환경(GitHub Pages, Firebase Hosting 등)에서 네트워크 왕복 지연 및 이미지 용량에 따라
+// 몬스터 이미지가 hp바/텍스트보다 늦게 나타나는 현상을 줄이기 위함.
+// 로딩이 실제로 끝나면 그 즉시 resolve되고(대부분의 경우 매우 빠름), 아주 느린 네트워크에서
+// 대형 이미지가 걸리는 예외적인 경우에만 최대 PRELOAD_TIMEOUT_MS(1초)에서 끊고 넘어감
+// (Promise.race 타임아웃 패턴 — 웹 게임 에셋 로더에서 널리 쓰이는 표준 방식).
+const PRELOAD_TIMEOUT_MS = 1000;
 function preloadImage(src) {
-    const img = new Image();
-    img.src = src;
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve();
+        img.onerror = () => resolve(); // 로딩 실패해도 게임 진행 자체는 막지 않음
+        img.src = src;
+        setTimeout(resolve, PRELOAD_TIMEOUT_MS);
+    });
 }
 
 // 몬스터 이름 / 종족값 오버레이 갱신
@@ -487,9 +497,11 @@ function onCaptureSuccess() {
     capturedList.push({ id: currentMonsterId, name: currentMonsterName, bst: currentEffectiveBst, isShiny: currentIsShiny });
 
     // 다음 몬스터를 미리 뽑아서 포획 메시지가 보이는 동안(타이핑 + 대기) 이미지를 미리 로드해둠
-    // → initGame이 실제로 화면에 표시할 때는 이미 캐시되어 있어 hp바/텍스트와 동시에 나타남
+    // → initGame이 실제로 화면에 표시할 때는 이미 로딩이 끝나 있어 hp바/텍스트와 동시에 나타남.
+    // 이 경로는 타이핑+대기 시간이 원래도 넉넉해서(1.6~1.8초) preloadPromise가 대부분 그 안에 끝나지만,
+    // 아주 느린 네트워크 등 예외 상황을 위해 initGame 호출 직전에 한 번 더 확실히 기다림.
     const nextMonster = pickRandomMonster();
-    preloadImage(nextMonster.src);
+    const preloadPromise = preloadImage(nextMonster.src);
 
     const message = `신난다!\n${currentMonsterName}을(를) 잡았다`;
     typeMessage(captureMessageEl, message, CAPTURE_CHAR_DELAY, () => {
@@ -504,8 +516,10 @@ function onCaptureSuccess() {
                 return;
             }
 
-            initGame(nextMonster); // 프리로드해둔 몬스터로 교체 (액션창은 계속 유지되어 있었음, initGame이 라벨/버튼상태도 갱신)
-            [throwBtn, runawayBtn, chargeBtn].forEach(b => b.classList.remove('btn-hidden'));
+            preloadPromise.then(() => {
+                initGame(nextMonster); // 프리로드해둔 몬스터로 교체 (액션창은 계속 유지되어 있었음, initGame이 라벨/버튼상태도 갱신)
+                [throwBtn, runawayBtn, chargeBtn].forEach(b => b.classList.remove('btn-hidden'));
+            });
         }, CAPTURE_MESSAGE_WAIT);
     });
 }
@@ -567,16 +581,22 @@ function runRunAway() {
     isAnimating = true;
     refreshButtons();
 
-    // 다음 몬스터를 미리 뽑아서 페이드아웃 구간(약 400ms) 동안 이미지를 미리 로드해둠
+    // 다음 몬스터를 미리 뽑아서 페이드아웃 구간(약 400ms) 동안 이미지 로딩을 시작해둠.
+    // 실제로 다 받아질 때까지(또는 최대 PRELOAD_TIMEOUT_MS까지) 기다렸다가 교체하므로,
+    // 이미지 용량이 커도 화면이 끊기거나 깨진 채로 나타나지 않음.
     const picked = pickRandomMonster();
-    preloadImage(picked.src);
+    const preloadPromise = preloadImage(picked.src);
 
     // 1. 페이드아웃 (CSS #monster / #monster-info 모두 동일한 opacity transition 사용)
     monster.style.opacity = '0';
     monsterInfo.style.opacity = '0';
 
-    setTimeout(() => {
-        // 2. 안 보이는 상태에서 다른 몬스터로 교체 (이미지가 이미 로드/로딩 중이므로 지연 최소화)
+    const fadeOutPromise = new Promise(resolve => setTimeout(resolve, MONSTER_SHRINK_DURATION));
+
+    // 페이드아웃 연출이 끝나는 것과 이미지 로딩이 끝나는 것, 둘 다 완료된 뒤에 교체
+    // (로딩이 페이드아웃보다 빨리 끝나면 지금과 동일하게 400ms 뒤 바로 교체됨)
+    Promise.all([fadeOutPromise, preloadPromise]).then(() => {
+        // 2. 안 보이는 상태에서 다른 몬스터로 교체 (이미 로딩이 끝난 상태라 지연 없이 표시됨)
         monster.src = picked.src;
         updateMonsterInfo(picked);
 
@@ -603,7 +623,7 @@ function runRunAway() {
             refreshButtons();
         }, MONSTER_SHRINK_DURATION);
 
-    }, MONSTER_SHRINK_DURATION);
+    });
 }
 
 // ===================== 학습 데이터 연결 =====================
