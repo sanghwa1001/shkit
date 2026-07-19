@@ -113,32 +113,52 @@ const SHAKE_PAUSE             = 350;  // ms - 흔들림 사이 또는 탈출 전
 const CAPTURE_CHAR_DELAY      = 42;   // ms - 포획 메시지 한 글자당 타이핑 속도 (기존 60 → 70%)
 const CAPTURE_MESSAGE_WAIT    = 1000; // ms - 메시지 완성 후 다음 몬스터로 넘어가기까지 대기 시간
 
-// 몬스터 등장 풀: POKEMON_DATA(1~649번, 5세대까지)의 모든 키(폼 차이 포함)를 그대로 사용.
-// 과거 3세대(1~386) 구간처럼 "번호 범위" 방식이 아니라, 폼 차이("386-attack" 등) 키도
-// 자연스럽게 섞여 등장하도록 POKEMON_DATA에 있는 키 목록 자체를 등장 풀로 삼음.
-const MONSTER_POOL = Object.keys(POKEMON_DATA);
+// ===================== 9세대 확장: 카테고리 기반 등장/포획 시스템 =====================
+// POKEMON_DATA의 각 항목은 category("normal"/"mega"/"gmax")와 species(폼 그룹핑용 기본 번호)를 가짐.
 
-const SHINY_CHANCE         = 0.1;   // 10% 확률로 shiny 등장
-const SHINY_CP_MULTIPLIER  = 2;     // shiny 포획 시 점수(CP)에 적용되는 배율 (포획 확률/실패 모션에는 영향 없음)
-const SHINY_EFFECT_DURATION = 1500; // ms - animated/shiny/0.gif 1회 재생 시간(실측 약 1.48초)
+// 카테고리별 ID 목록으로 분리
+const NORMAL_IDS = Object.keys(POKEMON_DATA).filter(id => POKEMON_DATA[id].category === 'normal');
+const MEGA_IDS    = Object.keys(POKEMON_DATA).filter(id => POKEMON_DATA[id].category === 'mega');
+const GMAX_IDS     = Object.keys(POKEMON_DATA).filter(id => POKEMON_DATA[id].category === 'gmax');
+
+// 일반(normal) 카테고리는 "종(species) 먼저 균등 선택 → 그 종의 폼 중 균등 선택"하는
+// 2단계 구조로 그룹화. 로토무(폼 6개)처럼 폼이 많은 종이 그만큼 더 자주 등장하는
+// 쏠림을 막기 위함 — 폼 개수와 무관하게 모든 "종"이 동일한 확률로 뽑히게 됨.
+const NORMAL_BY_SPECIES = {};
+NORMAL_IDS.forEach(id => {
+    const sp = POKEMON_DATA[id].species;
+    (NORMAL_BY_SPECIES[sp] = NORMAL_BY_SPECIES[sp] || []).push(id);
+});
+const NORMAL_SPECIES_LIST = Object.keys(NORMAL_BY_SPECIES);
+
+// 몬스터 등장 카테고리 확률 (합 1.0)
+const CATEGORY_RATE = { gmax: 0.005, mega: 0.025, normal: 0.97 };
+
+const SHINY_CHANCE         = 0.1;   // 10% 확률로 shiny 등장 (카테고리와 무관하게 독립 적용)
+const SHINY_CP_MULTIPLIER  = 1.5;   // shiny 포획 시 점수(CP) 배율. 카테고리 상관없이 통일
+const SHINY_EFFECT_DURATION = 1500; // ms - layout/0.gif 1회 재생 시간(실측 약 1.48초)
 // 아래 세 경로는 프리로드와 실제 재생 양쪽에서 항상 같은 문자열을 쓰도록 상수로 관리.
 // 쿼리스트링을 붙이지 않아야 브라우저 캐시가 재사용됨 (재생 직전 항상 다른 src가 이미
 // 들어있는 흐름이라, 쿼리스트링 없이도 브라우저가 알아서 처음부터 다시 재생해줌)
-const SHINY_EFFECT_SRC  = 'images/pokemon/pokemon/animated/shiny/0.gif';
+const SHINY_EFFECT_SRC  = 'images/pokemon/layout/0.gif';
 const POKEBALL_OPEN_SRC  = 'images/pokemon/pokeball/open.gif';
 const POKEBALL_CATCH_SRC = 'images/pokemon/pokeball/catch.gif';
 
-// list.xlsx 기반 POKEMON_DATA(pokemon_data.js)에서 종족값 범위 계산
-const BST_VALUES = Object.values(POKEMON_DATA).map(p => p.bst);
-const BST_MIN = Math.min(...BST_VALUES);
-const BST_MAX = Math.max(...BST_VALUES);
+// BST_MIN/MAX는 "normal" 카테고리 종족값만 기준으로 계산함.
+// 메가/거다이맥스는 CP가 극단적으로 높아서(최대 1800) 같이 섞으면 일반 포켓몬들의
+// 난이도 곡선(BST_MIN~MAX 선형보간)이 통째로 압축되어버리기 때문에 계산에서 제외.
+const NORMAL_BST_VALUES = NORMAL_IDS.map(id => POKEMON_DATA[id].bst);
+const BST_MIN = Math.min(...NORMAL_BST_VALUES);
+const BST_MAX = Math.max(...NORMAL_BST_VALUES);
 
-const CATCH_PROB_MAX = 0.9;   // 종족값 최저 몬스터의 포획 성공률
-const CATCH_PROB_MIN = 0.10;  // 종족값 최고 몬스터(아르세우스, BST 720)의 포획 성공률
+const CATCH_PROB_MAX  = 0.9;   // 종족값 최저(normal) 몬스터의 포획 성공률
+const CATCH_PROB_MIN  = 0.10;  // 종족값 최고(normal, 아르세우스) 몬스터의 포획 성공률
+const CATCH_PROB_RARE = 0.05;  // 메가/거다이맥스 전용 고정 포획 성공률 (normal 최고보다 더 어려움)
 
 // 현재 라운드 몬스터의 종족값 / 이름 / 번호(id) (포획 확률·실패 모션 결정, 포획 메시지·목록에 사용)
 let currentBst = 0;          // 원본 종족값 (포획 확률/실패 모션 계산 전용)
-let currentEffectiveBst = 0; // 표시/점수 계산용 값 (shiny면 2배)
+let currentEffectiveBst = 0; // 표시/점수 계산용 값 (shiny면 1.5배)
+let currentCategory = 'normal'; // 'normal' / 'mega' / 'gmax'
 let currentMonsterName = '';
 let currentMonsterId = '';
 let currentIsShiny = false;
@@ -248,15 +268,19 @@ function showResultScreen() {
     resultScreen.classList.remove('hidden');
 }
 
-// 종족값이 높을수록 포획 성공률이 낮아짐 (선형 보간)
-function getCatchProbability(bst) {
+// 종족값이 높을수록 포획 성공률이 낮아짐 (선형 보간). 메가/거다이맥스는 항상 고정값(더 어려움)
+function getCatchProbability(bst, category) {
+    if (category === 'mega' || category === 'gmax') return CATCH_PROB_RARE;
     const t = (bst - BST_MIN) / (BST_MAX - BST_MIN);
     return CATCH_PROB_MAX - t * (CATCH_PROB_MAX - CATCH_PROB_MIN);
 }
 
-// 종족값이 높을수록 실패 모션 1(무저항 탈출)이 잦고, 3(가장 오래 저항)은 드물어짐
-function pickFailType(bst) {
-    const t = (bst - BST_MIN) / (BST_MAX - BST_MIN);
+// 종족값이 높을수록 실패 모션 1(무저항 탈출)이 잦고, 3(가장 오래 저항)은 드물어짐.
+// 메가/거다이맥스는 t=1(난이도 최상단, 아르세우스와 동일한 실패 유형 비율)로 고정
+function pickFailType(bst, category) {
+    const t = (category === 'mega' || category === 'gmax')
+        ? 1
+        : (bst - BST_MIN) / (BST_MAX - BST_MIN);
     // 해너츠(CP 최저, t=0): 실패1/2/3 = 20/30/50
     // 아르세우스(CP 최고, t=1): 실패1/2/3 = 50/30/20 (같은 세 숫자를 반대로 배정)
     const w1 = 0.2 + 0.3 * t;  // 20% ~ 50% (무저항 탈출, 어려울수록 ↑)
@@ -268,17 +292,61 @@ function pickFailType(bst) {
     return 3;
 }
 
-// MONSTER_POOL(1~649번 + 폼 차이) 중 랜덤 선택 (10% 확률로 shiny 폴더 사용)
-// 이미지 파일명은 패딩 없는 그대로("1.gif", "386-attack.gif" 등)를 사용함
+// 카테고리별 스프라이트 폴더 (9세대 확장분은 정지 PNG 스프라이트시트 — animateSpriteSheet 참고)
+const CATEGORY_FOLDER = {
+    normal: { base: 'front',      shiny: 'front_shiny' },
+    mega:   { base: 'front_mega', shiny: 'front_mega_shiny' },
+    gmax:   { base: 'front_gmax', shiny: 'front_gmax_shiny' },
+};
+const SPRITE9_ROOT = 'images/pokemon/pokemon';
+
+// 도감/포획 목록에 쓰이는 아이콘 경로 (카테고리별로 icon/icon_mega/icon_gmax + _shiny 폴더로 분기)
+const ICON_FOLDER = {
+    normal: { base: 'icon',      shiny: 'icon_shiny' },
+    mega:   { base: 'icon_mega', shiny: 'icon_mega_shiny' },
+    gmax:   { base: 'icon_gmax', shiny: 'icon_gmax_shiny' },
+};
+function capturedIconSrc(id, category, isShiny) {
+    const folders = ICON_FOLDER[category] || ICON_FOLDER.normal;
+    const folder = isShiny ? folders.shiny : folders.base;
+    return `${SPRITE9_ROOT}/${folder}/${id}.png`;
+}
+
+// 몬스터 등장 카테고리(일반 97% / 메가 2.5% / 거다이맥스 0.5%)를 먼저 정하고,
+// 그 안에서 개체를 고름. 일반은 "종 먼저 균등 선택 → 폼 균등 선택"(쏠림 방지),
+// 메가/거다이맥스는 해당 카테고리 안에서 그냥 균등 선택 (쏠림 영향이 미미해서 단순 처리)
+function pickCategory() {
+    const r = Math.random();
+    if (r < CATEGORY_RATE.gmax) return 'gmax';
+    if (r < CATEGORY_RATE.gmax + CATEGORY_RATE.mega) return 'mega';
+    return 'normal';
+}
+
 function pickRandomMonster() {
-    const id = MONSTER_POOL[Math.floor(Math.random() * MONSTER_POOL.length)];
+    const category = pickCategory();
+    let id;
+    if (category === 'normal') {
+        const species = NORMAL_SPECIES_LIST[Math.floor(Math.random() * NORMAL_SPECIES_LIST.length)];
+        const forms = NORMAL_BY_SPECIES[species];
+        id = forms[Math.floor(Math.random() * forms.length)];
+    } else if (category === 'mega') {
+        id = MEGA_IDS[Math.floor(Math.random() * MEGA_IDS.length)];
+    } else {
+        id = GMAX_IDS[Math.floor(Math.random() * GMAX_IDS.length)];
+    }
+
     const isShiny = Math.random() < SHINY_CHANCE;
-    const folder  = isShiny ? 'images/pokemon/pokemon/animated/shiny' : 'images/pokemon/pokemon/animated';
-    const info = POKEMON_DATA[id] || { name: '???', bst: 0 };
+    const folders = CATEGORY_FOLDER[category];
+    const folder  = isShiny ? folders.shiny : folders.base;
+    const info = POKEMON_DATA[id] || { name: '???', bst: 0, category: 'normal' };
     // bst: 포획 확률/실패 모션 계산에 쓰이는 원본 종족값 (shiny 여부와 무관하게 항상 동일)
-    // effectiveBst: 표시/점수 계산에 쓰이는 값 (shiny면 2배)
+    // effectiveBst: 표시/점수 계산에 쓰이는 값 (shiny면 1.5배, 카테고리 공통)
     const effectiveBst = isShiny ? info.bst * SHINY_CP_MULTIPLIER : info.bst;
-    return { id, src: `${folder}/${id}.gif`, isShiny, name: info.name, bst: info.bst, effectiveBst };
+    return {
+        id, category,
+        src: `${SPRITE9_ROOT}/${folder}/${id}.png`,
+        isShiny, name: info.name, bst: info.bst, effectiveBst
+    };
 }
 
 // 이미지를 미리 요청해서 브라우저 캐시에 올려두고, 실제로 로딩이 끝날 때까지(또는 최대
@@ -299,10 +367,102 @@ function preloadImage(src) {
     });
 }
 
+// ===================== 9세대 확장: 스프라이트시트 애니메이션 재생 =====================
+// 9세대 확장분(images/pokemon/pokemon/)은 "가로로 프레임이 이어붙은 정지 PNG(필름스트립)"라서
+// GIF처럼 <img src>만으로는 재생이 안 됨. CSS background-image + background-position을
+// steps() 애니메이션으로 이동시켜 재생함 (캔버스를 전혀 안 써서 file://로 직접 열어도 동일하게
+// 동작함 — canvas.toDataURL()은 파일 프로토콜에서 "tainted canvas" 보안 오류가 나기 때문에
+// 캔버스 기반 방식은 배포 후에도 브라우저/환경에 따라 취약할 수 있어 아예 배제함).
+// 판별 기준(Pokemon Essentials front 스프라이트 로직과 동일): 가로가 세로의 2배를 넘으면
+// 여러 프레임이 이어붙은 스프라이트시트로 보고, 프레임 수 = round(가로/세로)로 계산.
+const SPRITE_FRAME_INTERVAL_MS = 90; // Pokemon Essentials 기본 프레임 딜레이(90ms)와 동일하게 맞춤
+
+let spriteAnimTimerId = null;
+function stopSpriteAnimation() {
+    if (spriteAnimTimerId !== null) {
+        clearInterval(spriteAnimTimerId);
+        spriteAnimTimerId = null;
+    }
+}
+
+// monster는 이제 <div>라서 background-image로 표시함 (index.html/style.css 참고).
+// el에 src를 표시함. 9세대 스프라이트시트면 프레임을 하나씩 잘라 background-position을
+// 픽셀 단위로 직접 옮기는 JS 타이머로 재생하고, 프레임이 1장뿐이면 정적 배경 이미지로 표시함.
+// (처음엔 CSS steps() 애니메이션 + 퍼센트 background-position으로 만들었는데, 실제 브라우저에서
+//  프레임 하나가 박스보다 작게 그려져서 여러 마리가 동시에 보이는 버그가 있었음 — 원인을 계속
+//  좁혀가기보다, 픽셀 단위로 직접 계산해서 모호함 자체를 없애는 쪽으로 교체함)
+let currentSpriteSrc = null; // 비동기 로딩 도중 몬스터가 바뀌었는지 추적용 (style 문자열 비교보다 안전)
+
+// 이 값보다 원본 프레임(정사각형 한 변, px)이 작은 포켓몬은 박스 안에서 그만큼 작게 표시되고,
+// 이 값과 같거나 큰 포켓몬은 박스를 꽉 채움 — 종족 간 "몸집 차이"가 화면에 그대로 반영되도록 함.
+// (668종 전체 실측 기준으로, 일반 포켓몬 평균이 박스의 약 54%를 채우도록 잡은 값 — 세부 근거는
+// 지난 5세대 이미지 크기 작업 때와 동일한 방식으로 산정함)
+const SPRITE_REFERENCE_SIZE = 140;
+
+function displayMonsterSprite(el, src, id) {
+    stopSpriteAnimation();
+    currentSpriteSrc = src;
+
+    const sprite = el.querySelector('#monster-sprite') || el;
+    sprite.style.backgroundRepeat = 'no-repeat';
+    sprite.style.backgroundPosition = '0 0';
+    sprite.style.backgroundSize = 'contain';
+    sprite.style.backgroundImage = `url("${src}")`;
+    sprite.style.width  = '100%';
+    sprite.style.height = '100%';
+    sprite.style.transform = 'translate(-50%, -50%)'; // 오프셋 정보 없으면 순수 중앙
+
+    const probe = new Image();
+    probe.onload = () => {
+        if (currentSpriteSrc !== src) return; // 그 사이 다른 몬스터로 바뀌었으면 무시
+
+        const frameSize  = probe.naturalHeight;
+        const frameCount = frameSize > 0 ? Math.max(1, Math.round(probe.naturalWidth / frameSize)) : 1;
+        // frameCount가 1이어도(정적 이미지, 예: 716번) 아래 크기 계산은 동일하게 적용해야
+        // 다른 포켓몬들과 상대적 크기가 맞음 — 프레임 반복 재생만 건너뜀(아래 참고)
+
+        // 바깥 박스(el)의 실제 렌더링 픽셀 크기를 기준으로 계산(반응형 스케일과 무관하게 항상 정확)
+        const boxWidth = el.clientWidth || parseFloat(getComputedStyle(el).width) || 288;
+
+        // 종족 간 상대적 크기가 보존되도록, "박스 너비 = SPRITE_REFERENCE_SIZE px"로 놓고
+        // 그 비율만큼만 원본 프레임을 확대. SPRITE_REFERENCE_SIZE보다 큰 극소수 개체(전설급 등)는
+        // 박스를 넘지 않도록 상한선(boxWidth)에서 클램프함.
+        const scale = boxWidth / SPRITE_REFERENCE_SIZE;
+        const displaySize = Math.min(frameSize * scale, boxWidth);
+
+        // 안쪽 레이어(sprite) 자체의 크기를 displaySize로 지정 — "보여주는 창"과 "프레임 한 칸
+        // 크기"가 항상 정확히 같아지므로, 여러 프레임이 한 창에 겹쳐 보이는 문제가 생기지 않음.
+        // 레이어는 CSS(top/left 50%)로 바깥 박스 정중앙 기준점을 잡고, transform에서 SPRITE_OFFSETS
+        // 보정값만큼 픽셀 단위로 미세 이동시킴.
+        sprite.style.width  = `${displaySize}px`;
+        sprite.style.height = `${displaySize}px`;
+        sprite.style.backgroundSize = `${displaySize * frameCount}px ${displaySize}px`;
+
+        // SPRITE_OFFSETS(포켓몬 에센셜 메트릭 데이터)의 종별 x/y 보정값을, 이 포켓몬의
+        // 실제 표시 배율(scale)에 맞춰 적용
+        const off = (typeof SPRITE_OFFSETS !== 'undefined' && SPRITE_OFFSETS[id]) || { x: 0, y: 0 };
+        const dx = off.x * scale;
+        const dy = off.y * scale;
+        sprite.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+
+        let frameIndex = 0;
+        const drawFrame = () => {
+            sprite.style.backgroundPosition = `-${frameIndex * displaySize}px 0px`;
+            frameIndex = (frameIndex + 1) % frameCount;
+        };
+        drawFrame();
+        if (frameCount > 1) {
+            spriteAnimTimerId = setInterval(drawFrame, SPRITE_FRAME_INTERVAL_MS);
+        }
+    };
+    probe.src = src;
+}
+
 // 몬스터 이름 / 종족값 오버레이 갱신
 function updateMonsterInfo(picked) {
     currentBst = picked.bst;
     currentEffectiveBst = picked.effectiveBst;
+    currentCategory = picked.category;
     currentMonsterName = picked.name;
     currentMonsterId = picked.id;
     currentIsShiny = picked.isShiny;
@@ -352,7 +512,7 @@ function initGame(preselected) {
 
     // 이번 라운드 몬스터 결정 (시작 시엔 새로 랜덤 선택, 포획 후엔 미리 프리로드해둔 몬스터 재사용)
     const picked = preselected || pickRandomMonster();
-    monster.src = picked.src;
+    displayMonsterSprite(monster, picked.src, picked.id);
     updateMonsterInfo(picked);
 
     // 이전 라운드에서 남아있을 수 있는 shiny 이펙트 정리 후, shiny면 새로 재생
@@ -505,7 +665,7 @@ function onCaptureSuccess() {
     updateCpTotalDisplay();
 
     // 포획한 순서대로 목록에 기록 (포획한 포켓몬 모달에 사용, CP는 shiny 2배가 반영된 값)
-    capturedList.push({ id: currentMonsterId, name: currentMonsterName, bst: currentEffectiveBst, isShiny: currentIsShiny });
+    capturedList.push({ id: currentMonsterId, name: currentMonsterName, bst: currentEffectiveBst, isShiny: currentIsShiny, category: currentCategory });
 
     // 다음 몬스터를 미리 뽑아서 포획 메시지가 보이는 동안(타이핑 + 대기) 이미지를 미리 로드해둠
     // → initGame이 실제로 화면에 표시할 때는 이미 로딩이 끝나 있어 hp바/텍스트와 동시에 나타남.
@@ -550,14 +710,14 @@ function runThrow() {
     refreshButtons();
 
     runCapture(() => {
-        const success = Math.random() < getCatchProbability(currentBst);
+        const success = Math.random() < getCatchProbability(currentBst, currentCategory);
 
         if (success) {
             shakeN(3, onCaptureSuccess);
             return;
         }
 
-        const failType = pickFailType(currentBst); // 1, 2, 3
+        const failType = pickFailType(currentBst, currentCategory); // 1, 2, 3
         const shakeCount = failType - 1;            // 1→0회, 2→1회, 3→2회
         shakeN(shakeCount, () => {
             setTimeout(() => openAndEscape(() => {
@@ -608,7 +768,7 @@ function runRunAway() {
     // (로딩이 페이드아웃보다 빨리 끝나면 지금과 동일하게 400ms 뒤 바로 교체됨)
     Promise.all([fadeOutPromise, preloadPromise]).then(() => {
         // 2. 안 보이는 상태에서 다른 몬스터로 교체 (이미 로딩이 끝난 상태라 지연 없이 표시됨)
-        monster.src = picked.src;
+        displayMonsterSprite(monster, picked.src, picked.id);
         updateMonsterInfo(picked);
 
         // 이전 shiny 이펙트 정리 후, shiny면 페이드인과 동시에 재생
@@ -846,11 +1006,11 @@ function renderCapturedList() {
     }
 
     // 같은 포켓몬(id)끼리 묶되, 일반 개체와 shiny는 항상 별도 그룹으로 분리
-    const groups = new Map(); // key: "id_isShiny" -> { id, name, bst, isShiny, count }
+    const groups = new Map(); // key: "id_isShiny" -> { id, name, bst, isShiny, category, count }
     capturedList.forEach(mon => {
         const key = `${mon.id}_${mon.isShiny}`;
         if (!groups.has(key)) {
-            groups.set(key, { id: mon.id, name: mon.name, bst: mon.bst, isShiny: mon.isShiny, count: 0 });
+            groups.set(key, { id: mon.id, name: mon.name, bst: mon.bst, isShiny: mon.isShiny, category: mon.category, count: 0 });
         }
         groups.get(key).count++;
     });
@@ -862,10 +1022,15 @@ function renderCapturedList() {
         const row = document.createElement('div');
         row.className = 'captured-row';
 
-        const icon = document.createElement('img');
+        const icon = document.createElement('div');
         icon.className = 'captured-icon';
-        icon.src = `images/pokemon/pokemon/icon/${group.id}.png`;
-        icon.alt = group.name;
+        // 9세대 확장분 아이콘은 가로 2프레임(128x64, 각 64x64)짜리 스프라이트시트라서
+        // <img>로는 통째로 눌려 보임 — background-image로 첫 프레임(왼쪽 절반)만 잘라서 표시
+        icon.style.backgroundImage = `url(${capturedIconSrc(group.id, group.category, group.isShiny)})`;
+        icon.style.backgroundSize = '200% 100%';
+        icon.style.backgroundPosition = '0 0';
+        icon.style.backgroundRepeat = 'no-repeat';
+        icon.title = group.name;
 
         const name = document.createElement('span');
         name.className = 'captured-name';
