@@ -1386,6 +1386,8 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
 /* 베타 구조로 복귀: #monster 밖의 독립 요소. top은 몬스터 박스의 세로 중앙(--monster-top +
    --monster-size/2)을 가리키고, translate(-50%,-50%)로 그 지점에 요소 중심을 맞춤.
    width/height는 재생 시점에 JS가 몬스터 크기에 맞춰 지정함(크기 비례 기능은 유지) */
+/* 샤이니 이펙트 패치: GIF 대신 PNG 필름스트림(shiny.png, 30프레임) + JS 프레임 제어 방식.
+   width/height/background-size/position은 재생 시점에 JS(playShinyEffect)가 지정함 */
 #shiny-effect {
     position: absolute;
     top: calc(var(--monster-top) + var(--monster-size) / 2);
@@ -1393,6 +1395,10 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
     transform: translate(-50%, -50%);
     z-index: 2;
     pointer-events: none;
+    background-repeat: no-repeat;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
 }
 
 /* 포켓볼 */
