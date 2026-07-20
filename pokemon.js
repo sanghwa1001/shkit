@@ -136,12 +136,19 @@ const CATEGORY_RATE = { gmax: 0.005, mega: 0.025, normal: 0.97 };
 
 const SHINY_CHANCE         = 0.1;   // 10% 확률로 shiny 등장 (카테고리와 무관하게 독립 적용)
 const SHINY_CP_MULTIPLIER  = 1.5;   // shiny 포획 시 점수(CP) 배율. 카테고리 상관없이 통일
-const SHINY_EFFECT_DURATION = 1480; // ms - layout/0.gif 1회 재생 시간(31프레임 합산 정확히 1480ms). 원본 gif는
-                                     // 무한반복(loop=0)이라, 이 시간이 지나면 다음 루프로 안 넘어가도록 정확히 끊어줌
-// 아래 세 경로는 프리로드와 실제 재생 양쪽에서 항상 같은 문자열을 쓰도록 상수로 관리.
-// 쿼리스트링을 붙이지 않아야 브라우저 캐시가 재사용됨 (재생 직전 항상 다른 src가 이미
-// 들어있는 흐름이라, 쿼리스트링 없이도 브라우저가 알아서 처음부터 다시 재생해줌)
-const SHINY_EFFECT_SRC  = 'images/pokemon/layout/0.gif';
+
+// 샤이니 이펙트 패치: GIF 대신 몬스터와 동일한 PNG 필름스트립 + JS 프레임 제어 방식.
+// 원본 0.gif(798x771, 31프레임)을 각 프레임 771x771 정사각형으로 중앙 크롭한 뒤 가로로
+// 이어붙여 제작함 → 23901x771, 31프레임, 프레임당 정확히 23901/31=771px(정수로 딱 떨어짐)
+const SHINY_EFFECT_SRC        = 'images/pokemon/layout/shiny.png';
+const SHINY_FRAME_COUNT       = 31;
+const SHINY_NATIVE_WIDTH      = 23901;
+const SHINY_NATIVE_HEIGHT     = 771;
+const SHINY_FRAME_INTERVAL_MS = 30; // 원본 gif의 실제 프레임(1~28번) 재생 속도와 동일하게 맞춤
+
+// 아래 두 경로(몬스터볼 open/catch)는 프리로드와 실제 재생 양쪽에서 항상 같은 문자열을 쓰도록
+// 상수로 관리. 쿼리스트링을 붙이지 않아야 브라우저 캐시가 재사용됨 (재생 직전 항상 다른 src가
+// 이미 들어있는 흐름이라, 쿼리스트링 없이도 브라우저가 알아서 처음부터 다시 재생해줌)
 const POKEBALL_OPEN_SRC  = 'images/pokemon/pokeball/open.gif';
 const POKEBALL_CATCH_SRC = 'images/pokemon/pokeball/catch.gif';
 
@@ -483,25 +490,52 @@ function updateMonsterInfo(picked) {
     monsterInfoText.classList.remove('hidden');
 }
 
-// shiny 등장 이펙트 — 몬스터와 겹쳐서 1회만 보이도록 재생 (원본 gif는 무한루프라 타이머로 직접 종료)
-// 호출부(initGame/runRunAway)에서 재생 직전 항상 shinyEffect.src=''로 비워두기 때문에,
-// 여기서 쿼리스트링 없는 고정 경로를 대입해도 브라우저가 "새로 표시"로 인식해 처음부터
-// 재생되면서도 캐시를 그대로 재사용함 (게임 시작 시 미리 받아둔 캐시가 활용됨)
-function playShinyEffect() {
-    // 샤이니 패치: 몬스터 크기에 비례하도록, 현재 #monster-sprite의 실제 표시 크기를 그대로 적용
-    const spriteEl = document.getElementById('monster-sprite');
-    const size = spriteEl.clientWidth || spriteEl.offsetWidth;
-    if (size) {
-        shinyEffect.style.width  = size + 'px';
-        shinyEffect.style.height = size + 'px';
+// shiny 등장 이펙트 재생 타이머(연속으로 shiny가 나올 때 이전 재생을 안전하게 정리하기 위해 필요)
+let shinyAnimTimerId = null;
+function stopShinyAnimation() {
+    if (shinyAnimTimerId !== null) {
+        clearInterval(shinyAnimTimerId);
+        shinyAnimTimerId = null;
     }
-    shinyEffect.src = SHINY_EFFECT_SRC;
-    shinyEffect.classList.remove('hidden');
-    setTimeout(() => {
-        shinyEffect.classList.add('hidden');
-        shinyEffect.src = '';
-    }, SHINY_EFFECT_DURATION);
 }
+
+// shiny 등장 이펙트 — 몬스터 스프라이트(displayMonsterSprite)와 동일한 원리로, PNG 필름스트립을
+// background-position으로 프레임마다 정확히 이동시키며 재생. 정확히 SHINY_FRAME_COUNT번 이동한 뒤
+// 스스로 멈추므로(setInterval을 프레임 수만큼만 실행) GIF의 루프/캐시 관련 문제가 원천적으로 없음
+function playShinyEffect() {
+    stopShinyAnimation(); // 혹시 이전 재생이 아직 진행 중이면 정리 (연속 shiny 대비)
+
+    // 몬스터 크기에 비례하도록, 현재 #monster-sprite의 실제 표시 크기(가로)를 기준으로 스케일 계산.
+    // 프레임이 정사각형(771x771)이라 가로/세로 배율이 동일함
+    const spriteEl = document.getElementById('monster-sprite');
+    const nativeFrameSize = SHINY_NATIVE_WIDTH / SHINY_FRAME_COUNT; // 771, 반올림 없이 그대로
+    const size = spriteEl.clientWidth || spriteEl.offsetWidth || nativeFrameSize;
+    const scale = size / nativeFrameSize;
+    const frameSize = nativeFrameSize * scale; // 반올림 없이 그대로(드리프트 방지)
+
+    shinyEffect.style.width  = `${frameSize}px`;
+    shinyEffect.style.height = `${frameSize}px`;
+    shinyEffect.style.backgroundImage = `url("${SHINY_EFFECT_SRC}")`;
+    shinyEffect.style.backgroundSize  = `${frameSize * SHINY_FRAME_COUNT}px ${frameSize}px`;
+
+    let frameIndex = 0;
+    const drawFrame = () => {
+        shinyEffect.style.backgroundPosition = `-${frameIndex * frameSize}px 0px`;
+    };
+    drawFrame();
+    shinyEffect.classList.remove('hidden');
+
+    shinyAnimTimerId = setInterval(() => {
+        frameIndex++;
+        if (frameIndex >= SHINY_FRAME_COUNT) {
+            stopShinyAnimation();
+            shinyEffect.classList.add('hidden');
+            return;
+        }
+        drawFrame();
+    }, SHINY_FRAME_INTERVAL_MS);
+}
+
 
 // 포켓볼 상태를 던지기 전 초기 상태로 되돌림 (인라인 스타일/클래스/애니메이션 모두 제거)
 function resetPokeball() {
@@ -531,9 +565,9 @@ function initGame(preselected) {
 
     // 이번 라운드 몬스터 결정 (시작 시엔 새로 랜덤 선택, 포획 후엔 미리 프리로드해둔 몬스터 재사용)
     const picked = preselected || pickRandomMonster();
-    // 이전 라운드에서 남아있을 수 있는 shiny 이펙트 정리
+    // 이전 라운드에서 남아있을 수 있는 shiny 이펙트 정리 (재생 중이었다면 타이머도 같이 정지)
+    stopShinyAnimation();
     shinyEffect.classList.add('hidden');
-    shinyEffect.src = '';
     // #shiny-effect는 #monster 밖의 독립 요소(베타와 동일 구조)라 부모 페이드인의 영향을 안 받음.
     // 다만 크기(몬스터 비례)를 정확히 맞추려면 #monster-sprite의 크기 계산이 끝난 뒤(onReady)에
     // 재생해야 함 — 동기적으로 바로 부르면 아직 계산 전이라 기본값을 읽게 됨
@@ -800,9 +834,9 @@ function runRunAway() {
     // (로딩이 페이드아웃보다 빨리 끝나면 지금과 동일하게 400ms 뒤 바로 교체됨)
     Promise.all([fadeOutPromise, preloadPromise]).then(() => {
         // 2. 안 보이는 상태에서 다른 몬스터로 교체 (이미 로딩이 끝난 상태라 지연 없이 표시됨)
-        // 이전 shiny 이펙트 정리
+        // 이전 shiny 이펙트 정리 (재생 중이었다면 타이머도 같이 정지)
+        stopShinyAnimation();
         shinyEffect.classList.add('hidden');
-        shinyEffect.src = '';
         // 샤이니 패치: 크기 계산 완료(onReady) 이후에 재생 (#shiny-effect는 독립 요소라 지연 없이 즉시 재생)
         displayMonsterSprite(monster, picked.src, picked.id, () => {
             if (picked.isShiny) playShinyEffect();
