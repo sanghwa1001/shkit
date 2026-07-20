@@ -1383,9 +1383,12 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
 /* shiny 등장 이펙트 — 몬스터와 완전히 같은 크기/위치로 겹쳐서 표시 */
 /* 샤이니 패치: 이제 #monster 안쪽에 위치 — top/left는 #monster 기준 상대좌표.
    width/height는 재생 시점에 JS가 #monster-sprite와 동일하게 맞춰줌(고정값 없음) */
+/* 베타 구조로 복귀: #monster 밖의 독립 요소. top은 몬스터 박스의 세로 중앙(--monster-top +
+   --monster-size/2)을 가리키고, translate(-50%,-50%)로 그 지점에 요소 중심을 맞춤.
+   width/height는 재생 시점에 JS가 몬스터 크기에 맞춰 지정함(크기 비례 기능은 유지) */
 #shiny-effect {
     position: absolute;
-    top: 50%;
+    top: calc(var(--monster-top) + var(--monster-size) / 2);
     left: 50%;
     transform: translate(-50%, -50%);
     z-index: 2;

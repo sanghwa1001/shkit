@@ -136,11 +136,8 @@ const CATEGORY_RATE = { gmax: 0.005, mega: 0.025, normal: 0.97 };
 
 const SHINY_CHANCE         = 0.1;   // 10% 확률로 shiny 등장 (카테고리와 무관하게 독립 적용)
 const SHINY_CP_MULTIPLIER  = 1.5;   // shiny 포획 시 점수(CP) 배율. 카테고리 상관없이 통일
-const SHINY_EFFECT_DURATION = 1480; // ms - layout/0.gif 1회 재생 시간(31프레임 합산 정확히 1480ms, 루프 시작 전에 정확히 끊기도록)
-// 몬스터 페이드인(MONSTER_SHRINK_DURATION=400ms) 중간에 재생을 시작함 — 400ms(완전히 선명해질 때까지) 기다리면
-// 체감 지연이 크고, 너무 이르면(예: 200ms) 몬스터가 흐릿한 채로 겹쳐 보임. 300ms 지점(몬스터 opacity 68%)이
-// 지연 체감과 겹침 어색함 사이의 절충점
-const SHINY_EFFECT_START_DELAY = 300;
+const SHINY_EFFECT_DURATION = 1480; // ms - layout/0.gif 1회 재생 시간(31프레임 합산 정확히 1480ms). 원본 gif는
+                                     // 무한반복(loop=0)이라, 이 시간이 지나면 다음 루프로 안 넘어가도록 정확히 끊어줌
 // 아래 세 경로는 프리로드와 실제 재생 양쪽에서 항상 같은 문자열을 쓰도록 상수로 관리.
 // 쿼리스트링을 붙이지 않아야 브라우저 캐시가 재사용됨 (재생 직전 항상 다른 src가 이미
 // 들어있는 흐름이라, 쿼리스트링 없이도 브라우저가 알아서 처음부터 다시 재생해줌)
@@ -537,12 +534,11 @@ function initGame(preselected) {
     // 이전 라운드에서 남아있을 수 있는 shiny 이펙트 정리
     shinyEffect.classList.add('hidden');
     shinyEffect.src = '';
-    // 샤이니 패치: 몬스터 크기 계산이 끝난 뒤(onReady)에만 재생해야 #monster-sprite 크기를
-    // 정확히 읽어올 수 있음 — 동기적으로 바로 부르면 아직 계산 전이라 기본값(100%)을 읽게 됨.
-    // 또한 #shiny-effect가 #monster 안에 있어 부모의 페이드인(opacity 0→1, MONSTER_SHRINK_DURATION)에
-    // 같이 가려지므로, 페이드인이 끝난 뒤에 재생을 시작해야 처음부터 끝까지 전부 보임
+    // #shiny-effect는 #monster 밖의 독립 요소(베타와 동일 구조)라 부모 페이드인의 영향을 안 받음.
+    // 다만 크기(몬스터 비례)를 정확히 맞추려면 #monster-sprite의 크기 계산이 끝난 뒤(onReady)에
+    // 재생해야 함 — 동기적으로 바로 부르면 아직 계산 전이라 기본값을 읽게 됨
     displayMonsterSprite(monster, picked.src, picked.id, () => {
-        if (picked.isShiny) setTimeout(playShinyEffect, SHINY_EFFECT_START_DELAY);
+        if (picked.isShiny) playShinyEffect();
     });
     updateMonsterInfo(picked);
 
@@ -807,9 +803,9 @@ function runRunAway() {
         // 이전 shiny 이펙트 정리
         shinyEffect.classList.add('hidden');
         shinyEffect.src = '';
-        // 샤이니 패치: 크기 계산 완료(onReady) 이후 + 몬스터 페이드인(MONSTER_SHRINK_DURATION) 이후에 재생
+        // 샤이니 패치: 크기 계산 완료(onReady) 이후에 재생 (#shiny-effect는 독립 요소라 지연 없이 즉시 재생)
         displayMonsterSprite(monster, picked.src, picked.id, () => {
-            if (picked.isShiny) setTimeout(playShinyEffect, SHINY_EFFECT_START_DELAY);
+            if (picked.isShiny) playShinyEffect();
         });
         updateMonsterInfo(picked);
 
