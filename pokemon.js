@@ -97,7 +97,7 @@ let isAnimating = false;
 let gameTimeUp = false;
 
 // 상수
-const THROW_DURATION          = 420;  // ms - 던지는 시간 (기존 600 → 70%)
+const THROW_DURATION          = 400;  // ms - 던지는 시간 (몬스터볼 패치: 새 throw.gif 8프레임×50ms에 맞춤. style.css의 #pokeball.throwing transition-duration과 반드시 함께 변경)
 const BOUNCE_DURATION         = 525;  // ms - 충돌 후 정점까지 걸리는 시간 (기존 750 → 70%)
 const OPEN_DELAY              = 210;  // ms - 충돌 후 open.gif 시작까지 딜레이 (기존 300 → 70%)
 const CAPTURE_ABSORB_DURATION = 280;  // ms - 포획 흡수(.captured) CSS 트랜지션 시간 (기존 400 → 70%, 도망치다와는 별개)
@@ -108,7 +108,7 @@ const LAND_DURATION           = 280;  // ms - 착지 바운스 animation 시간 
 const LANDED_WAIT             = 350;  // ms - 착지 후 onLanded 호출까지 대기 (기존 500 → 70%)
 const ESCAPE_CALLBACK_WAIT    = 350;  // ms - 탈출 연출 후 콜백까지 대기 (기존 500 → 70%)
 const ESCAPE_SPRING_DURATION  = 350;  // ms - 탈출 후 원래 크기로 복귀하는 스프링 트랜지션 (기존 500 → 70%)
-const SHAKE_DURATION          = 490;  // ms - catch.gif 1회 재생 시간 (기존 700 → 70%)
+const SHAKE_DURATION          = 450;  // ms - catch.gif 1회 재생 시간 (몬스터볼 패치: 새 catch.gif 9프레임×50ms에 맞춤)
 const SHAKE_PAUSE             = 350;  // ms - 흔들림 사이 또는 탈출 전 대기 시간 (기존 500 → 70%)
 const CAPTURE_CHAR_DELAY      = 42;   // ms - 포획 메시지 한 글자당 타이핑 속도 (기존 60 → 70%)
 const CAPTURE_MESSAGE_WAIT    = 1000; // ms - 메시지 완성 후 다음 몬스터로 넘어가기까지 대기 시간
@@ -144,16 +144,23 @@ const SHINY_EFFECT_SRC  = 'images/pokemon/layout/0.gif';
 const POKEBALL_OPEN_SRC  = 'images/pokemon/pokeball/open.gif';
 const POKEBALL_CATCH_SRC = 'images/pokemon/pokeball/catch.gif';
 
-// BST_MIN/MAX는 "normal" 카테고리 종족값만 기준으로 계산함.
-// 메가/거다이맥스는 CP가 극단적으로 높아서(최대 1800) 같이 섞으면 일반 포켓몬들의
-// 난이도 곡선(BST_MIN~MAX 선형보간)이 통째로 압축되어버리기 때문에 계산에서 제외.
+// BST_MIN/MAX는 "normal" 카테고리 종족값 범위 참고용 (175~770).
+// 포획률패치 이후 getCatchProbability()는 지수함수 상수(CATCH_EXP_*)를 직접 쓰므로
+// 이 값 자체를 계산에 쓰진 않지만, 범위 확인/디버깅용으로 남겨둠.
 const NORMAL_BST_VALUES = NORMAL_IDS.map(id => POKEMON_DATA[id].bst);
 const BST_MIN = Math.min(...NORMAL_BST_VALUES);
 const BST_MAX = Math.max(...NORMAL_BST_VALUES);
 
-const CATCH_PROB_MAX  = 0.9;   // 종족값 최저(normal) 몬스터의 포획 성공률
-const CATCH_PROB_MIN  = 0.10;  // 종족값 최고(normal, 아르세우스) 몬스터의 포획 성공률
-const CATCH_PROB_RARE = 0.05;  // 메가/거다이맥스 전용 고정 포획 성공률 (normal 최고보다 더 어려움)
+const CATCH_PROB_MAX  = 0.9;   // 종족값 최저(normal) 몬스터의 포획 성공률 (지수함수 곡선의 이론적 상한 참고값)
+const CATCH_PROB_MIN  = 0.10;  // 종족값 최고(normal) 몬스터의 포획 성공률 (지수함수 곡선의 이론적 하한 참고값)
+const CATCH_PROB_RARE = 0.10;  // 메가/거다이맥스 전용 고정 포획 성공률 (normal 최고와 동일)
+
+// 포획률패치: 일반 포켓몬 포획 확률을 선형 보간 대신 지수함수로 변경.
+// 세 지점을 정확히 지나도록 피팅한 계수(BST 175→90%, 500→30%, 770→10%):
+//   prob(bst) = CATCH_EXP_C + CATCH_EXP_A * exp(-CATCH_EXP_K * bst)
+const CATCH_EXP_A = 1.6276185420670406;
+const CATCH_EXP_K = 0.003028144951451861;
+const CATCH_EXP_C = -0.058095865976901084;
 
 // 현재 라운드 몬스터의 종족값 / 이름 / 번호(id) (포획 확률·실패 모션 결정, 포획 메시지·목록에 사용)
 let currentBst = 0;          // 원본 종족값 (포획 확률/실패 모션 계산 전용)
@@ -268,19 +275,27 @@ function showResultScreen() {
     resultScreen.classList.remove('hidden');
 }
 
-// 종족값이 높을수록 포획 성공률이 낮아짐 (선형 보간). 메가/거다이맥스는 항상 고정값(더 어려움)
+// 종족값이 높을수록 포획 성공률이 지수적으로 낮아짐 (175→90%, 500→30%, 770→10%).
+// 메가/거다이맥스는 항상 고정값(normal 최고와 동일)
 function getCatchProbability(bst, category) {
     if (category === 'mega' || category === 'gmax') return CATCH_PROB_RARE;
-    const t = (bst - BST_MIN) / (BST_MAX - BST_MIN);
-    return CATCH_PROB_MAX - t * (CATCH_PROB_MAX - CATCH_PROB_MIN);
+    return CATCH_EXP_C + CATCH_EXP_A * Math.exp(-CATCH_EXP_K * bst);
 }
 
-// 종족값이 높을수록 실패 모션 1(무저항 탈출)이 잦고, 3(가장 오래 저항)은 드물어짐.
-// 메가/거다이맥스는 t=1(난이도 최상단, 아르세우스와 동일한 실패 유형 비율)로 고정
+// 포획 확률 곡선에서 "얼마나 어려운 위치인지"를 0(가장 쉬움)~1(가장 어려움)로 환산.
+// 종족값을 직접 쓰지 않고 포획확률 기반으로 계산해서, 실패 유형 비율도 지수함수의
+// 굴곡(초반에 빠르게 어려워지는 모양)을 그대로 반영하도록 함
+function getFailTypeProgress(bst) {
+    const prob = getCatchProbability(bst, 'normal');
+    return (CATCH_PROB_MAX - prob) / (CATCH_PROB_MAX - CATCH_PROB_MIN);
+}
+
+// 종족값이 높을수록(정확히는 포획확률 기반 진행도가 높을수록) 실패 모션 1(무저항 탈출)이
+// 잦고, 3(가장 오래 저항)은 드물어짐. 메가/거다이맥스는 t=1(난이도 최상단) 고정
 function pickFailType(bst, category) {
     const t = (category === 'mega' || category === 'gmax')
         ? 1
-        : (bst - BST_MIN) / (BST_MAX - BST_MIN);
+        : getFailTypeProgress(bst);
     // 해너츠(CP 최저, t=0): 실패1/2/3 = 20/30/50
     // 아르세우스(CP 최고, t=1): 실패1/2/3 = 50/30/20 (같은 세 숫자를 반대로 배정)
     const w1 = 0.2 + 0.3 * t;  // 20% ~ 50% (무저항 탈출, 어려울수록 ↑)

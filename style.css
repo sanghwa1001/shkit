@@ -1396,7 +1396,10 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
     height: var(--ball-size);
     object-fit: contain;
     z-index: 5;
-    transition: bottom 0.42s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition: bottom 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); /* 몬스터볼 패치: JS THROW_DURATION(400ms)과 반드시 동일하게 유지 */
+    image-rendering: pixelated; /* 몬스터볼 패치: 원본 해상도가 32~64px로 작아져 확대 시 흐려지는 것 방지 */
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
 }
 
 /* 충돌 후 정점까지 솟아오르는 애니메이션 (forwards: 정점 위치 유지) */
