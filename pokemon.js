@@ -10,6 +10,7 @@ const gameContainer = document.getElementById('game-container');
 const controlPanel = document.getElementById('control-panel');
 const actionBtns  = document.getElementById('action-btns');
 const monsterInfo = document.getElementById('monster-info');
+const monsterInfoText = document.getElementById('monster-info-text'); // 이름표시패치: monster-info 밖으로 분리됨, hp바와 표시/페이드 상태를 계속 함께 맞춰줘야 함
 const monsterNameEl = document.getElementById('monster-name');
 const monsterBstEl  = document.getElementById('monster-bst');
 const captureMessageEl = document.getElementById('capture-message');
@@ -136,7 +137,7 @@ const CATEGORY_RATE = { gmax: 0.005, mega: 0.025, normal: 0.97 };
 
 const SHINY_CHANCE         = 0.1;   // 10% 확률로 shiny 등장 (카테고리와 무관하게 독립 적용)
 const SHINY_CP_MULTIPLIER  = 1.5;   // shiny 포획 시 점수(CP) 배율. 카테고리 상관없이 통일
-const SHINY_EFFECT_DURATION = 1500; // ms - layout/0.gif 1회 재생 시간(실측 약 1.48초)
+const SHINY_EFFECT_DURATION = 1480; // ms - layout/0.gif 1회 재생 시간(31프레임 합산 정확히 1480ms, 루프 시작 전에 정확히 끊기도록)
 // 아래 세 경로는 프리로드와 실제 재생 양쪽에서 항상 같은 문자열을 쓰도록 상수로 관리.
 // 쿼리스트링을 붙이지 않아야 브라우저 캐시가 재사용됨 (재생 직전 항상 다른 src가 이미
 // 들어있는 흐름이라, 쿼리스트링 없이도 브라우저가 알아서 처음부터 다시 재생해줌)
@@ -186,7 +187,7 @@ function formatTime(sec) {
 
 // CP 합계를 k 단위(소수 첫째자리)로 표시 (예: 1234 → "1.2k")
 function formatCpTotal(cp) {
-    return cp.toLocaleString('ko-KR');
+    return Math.round(cp).toLocaleString('ko-KR');
 }
 
 function updateTimerDisplay() {
@@ -267,6 +268,7 @@ function showResultScreen() {
     monster.classList.add('hidden');
     shinyEffect.classList.add('hidden');
     monsterInfo.classList.add('hidden');
+    monsterInfoText.classList.add('hidden');
     gameTimerEl.classList.add('hidden');
     cpTotalEl.classList.add('hidden');
     pokeball.classList.add('hidden');
@@ -414,7 +416,7 @@ let currentSpriteSrc = null; // 비동기 로딩 도중 몬스터가 바뀌었�
 // 지난 5세대 이미지 크기 작업 때와 동일한 방식으로 산정함)
 const SPRITE_REFERENCE_SIZE = 140;
 
-function displayMonsterSprite(el, src, id) {
+function displayMonsterSprite(el, src, id, onReady) {
     stopSpriteAnimation();
     currentSpriteSrc = src;
 
@@ -469,6 +471,7 @@ function displayMonsterSprite(el, src, id) {
         if (frameCount > 1) {
             spriteAnimTimerId = setInterval(drawFrame, SPRITE_FRAME_INTERVAL_MS);
         }
+        if (onReady) onReady(); // 샤이니 이펙트 등, 크기 계산이 끝난 뒤에만 안전하게 실행돼야 하는 후속 작업용
     };
     probe.src = src;
 }
@@ -484,6 +487,7 @@ function updateMonsterInfo(picked) {
     monsterNameEl.textContent = `${picked.name}:`;
     monsterBstEl.textContent  = `CP ${formatCpTotal(picked.effectiveBst)}`;
     monsterInfo.classList.remove('hidden');
+    monsterInfoText.classList.remove('hidden');
 }
 
 // shiny 등장 이펙트 — 몬스터와 겹쳐서 1회만 보이도록 재생 (원본 gif는 무한루프라 타이머로 직접 종료)
@@ -491,6 +495,13 @@ function updateMonsterInfo(picked) {
 // 여기서 쿼리스트링 없는 고정 경로를 대입해도 브라우저가 "새로 표시"로 인식해 처음부터
 // 재생되면서도 캐시를 그대로 재사용함 (게임 시작 시 미리 받아둔 캐시가 활용됨)
 function playShinyEffect() {
+    // 샤이니 패치: 몬스터 크기에 비례하도록, 현재 #monster-sprite의 실제 표시 크기를 그대로 적용
+    const spriteEl = document.getElementById('monster-sprite');
+    const size = spriteEl.clientWidth || spriteEl.offsetWidth;
+    if (size) {
+        shinyEffect.style.width  = size + 'px';
+        shinyEffect.style.height = size + 'px';
+    }
     shinyEffect.src = SHINY_EFFECT_SRC;
     shinyEffect.classList.remove('hidden');
     setTimeout(() => {
@@ -527,13 +538,15 @@ function initGame(preselected) {
 
     // 이번 라운드 몬스터 결정 (시작 시엔 새로 랜덤 선택, 포획 후엔 미리 프리로드해둔 몬스터 재사용)
     const picked = preselected || pickRandomMonster();
-    displayMonsterSprite(monster, picked.src, picked.id);
-    updateMonsterInfo(picked);
-
-    // 이전 라운드에서 남아있을 수 있는 shiny 이펙트 정리 후, shiny면 새로 재생
+    // 이전 라운드에서 남아있을 수 있는 shiny 이펙트 정리
     shinyEffect.classList.add('hidden');
     shinyEffect.src = '';
-    if (picked.isShiny) playShinyEffect();
+    // 샤이니 패치: 몬스터 크기 계산이 끝난 뒤(onReady)에만 재생해야 #monster-sprite 크기를
+    // 정확히 읽어올 수 있음 — 동기적으로 바로 부르면 아직 계산 전이라 기본값(100%)을 읽게 됨
+    displayMonsterSprite(monster, picked.src, picked.id, () => {
+        if (picked.isShiny) playShinyEffect();
+    });
+    updateMonsterInfo(picked);
 
     // 몬스터 + hp바를 투명한 상태로 초기화한 뒤, 도망치기와 동일한 페이드인 효과로 나타나게 함
     monster.classList.remove('captured', 'hidden');
@@ -541,16 +554,21 @@ function initGame(preselected) {
     monster.style.transform  = '';
     monster.style.opacity    = '0';
     monsterInfo.style.transition = 'none';
+    monsterInfoText.style.transition = 'none';
     monsterInfo.style.opacity    = '0';
+    monsterInfoText.style.opacity    = '0';
     void monster.offsetHeight;
     monster.style.transition = '';
     monster.style.opacity    = '1';
     monsterInfo.style.transition = '';
+    monsterInfoText.style.transition = '';
     monsterInfo.style.opacity    = '1';
+    monsterInfoText.style.opacity    = '1';
 
     setTimeout(() => {
         monster.style.opacity = '';
         monsterInfo.style.opacity = '';
+        monsterInfoText.style.opacity = '';
     }, MONSTER_SHRINK_DURATION);
 
     // 포켓볼 상태 초기화
@@ -682,6 +700,10 @@ function onCaptureSuccess() {
     // 포획한 순서대로 목록에 기록 (포획한 포켓몬 모달에 사용, CP는 shiny 2배가 반영된 값)
     capturedList.push({ id: currentMonsterId, name: currentMonsterName, bst: currentEffectiveBst, isShiny: currentIsShiny, category: currentCategory });
 
+    // 아이콘프리로드패치: 도감 목록을 열 때 여러 아이콘이 한꺼번에 몰려서(브라우저 동시 요청 제한
+    // 약 6개) 대기 줄이 생기는 것을 막기 위해, 포획하는 순간마다 하나씩 분산해서 미리 받아둠
+    preloadImage(capturedIconSrc(currentMonsterId, currentCategory, currentIsShiny));
+
     // 다음 몬스터를 미리 뽑아서 포획 메시지가 보이는 동안(타이핑 + 대기) 이미지를 미리 로드해둠
     // → initGame이 실제로 화면에 표시할 때는 이미 로딩이 끝나 있어 hp바/텍스트와 동시에 나타남.
     // 이 경로는 타이핑+대기 시간이 원래도 넉넉해서(1.6~1.8초) preloadPromise가 대부분 그 안에 끝나지만,
@@ -776,6 +798,7 @@ function runRunAway() {
     // 1. 페이드아웃 (CSS #monster / #monster-info 모두 동일한 opacity transition 사용)
     monster.style.opacity = '0';
     monsterInfo.style.opacity = '0';
+    monsterInfoText.style.opacity = '0';
 
     const fadeOutPromise = new Promise(resolve => setTimeout(resolve, MONSTER_SHRINK_DURATION));
 
@@ -783,21 +806,25 @@ function runRunAway() {
     // (로딩이 페이드아웃보다 빨리 끝나면 지금과 동일하게 400ms 뒤 바로 교체됨)
     Promise.all([fadeOutPromise, preloadPromise]).then(() => {
         // 2. 안 보이는 상태에서 다른 몬스터로 교체 (이미 로딩이 끝난 상태라 지연 없이 표시됨)
-        displayMonsterSprite(monster, picked.src, picked.id);
-        updateMonsterInfo(picked);
-
-        // 이전 shiny 이펙트 정리 후, shiny면 페이드인과 동시에 재생
+        // 이전 shiny 이펙트 정리
         shinyEffect.classList.add('hidden');
         shinyEffect.src = '';
-        if (picked.isShiny) playShinyEffect();
+        // 샤이니 패치: 크기 계산 완료(onReady) 이후에만 재생
+        displayMonsterSprite(monster, picked.src, picked.id, () => {
+            if (picked.isShiny) playShinyEffect();
+        });
+        updateMonsterInfo(picked);
+
 
         // 3. 페이드인 (몬스터 + hp바 동시에)
         monster.style.opacity = '1';
         monsterInfo.style.opacity = '1';
+        monsterInfoText.style.opacity = '1';
 
         setTimeout(() => {
             monster.style.opacity = '';
             monsterInfo.style.opacity = '';
+            monsterInfoText.style.opacity = '';
 
             if (gameTimeUp) {
                 // 도망치는 도중 시간이 끝난 경우 — 연출까지 다 보여준 뒤 결과 화면으로 전환

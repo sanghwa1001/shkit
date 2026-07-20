@@ -1279,10 +1279,15 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
 
 /* 이름/종족값 텍스트는 hp_bar.png 속 초록 게이지 시작 x위치(가로 약 29.2%)에 좌측 정렬,
    hp_bar 상단에서 10px 위에 표시 */
+/* 이름표시패치: hp바(#monster-info) 밖으로 분리되어 #game-container 기준 좌표로 변경.
+   가로: 화면 전체 폭 기준 중앙정렬(긴 이름이 hp바 폭 밖으로 잘리는 문제 해결)
+   세로: 기존과 동일한 위치가 나오도록 수식으로 계산(--info-top 기준 3px 위, 절대값 그대로 유지) */
 #monster-info-text {
     position: absolute;
-    left: 29.2%;
-    bottom: calc(100% + 3px);
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(var(--container-height) - var(--info-top) + 3px);
+    z-index: 6;
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -1290,6 +1295,7 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
     white-space: nowrap;
     font-family: var(--pixel-font);
     line-height: 20px;
+    transition: opacity 0.4s ease-in; /* #monster-info와 동일한 페이드 속도 유지 */
 }
 
 #monster-name {
@@ -1375,13 +1381,13 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
 }
 
 /* shiny 등장 이펙트 — 몬스터와 완전히 같은 크기/위치로 겹쳐서 표시 */
+/* 샤이니 패치: 이제 #monster 안쪽에 위치 — top/left는 #monster 기준 상대좌표.
+   width/height는 재생 시점에 JS가 #monster-sprite와 동일하게 맞춰줌(고정값 없음) */
 #shiny-effect {
     position: absolute;
-    top: var(--monster-top);
+    top: 50%;
     left: 50%;
-    transform: translateX(-50%);
-    width: var(--monster-size);
-    height: auto;
+    transform: translate(-50%, -50%);
     z-index: 2;
     pointer-events: none;
 }
