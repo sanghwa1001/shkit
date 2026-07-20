@@ -25,7 +25,6 @@ const cpTotalEl   = document.getElementById('cp-total');
 // JS는 그 결과로 실제 렌더링된 #game-frame의 너비만 읽어서 370px 기준 배율로 환산할 뿐,
 // 뷰포트 크기를 직접 계산하지 않으므로 innerWidth/visualViewport 같은 측정 오차에 좌우되지 않음.
 const BASE_WIDTH  = 370;
-const BASE_HEIGHT = 600;
 let currentScale = 1; // getThrowTargetBottom() 등 화면 좌표 기반 계산에서 로컬 좌표로 환산할 때 사용
 
 const gameFrame = document.getElementById('game-frame');
@@ -138,19 +137,16 @@ const CATEGORY_RATE = { gmax: 0.005, mega: 0.025, normal: 0.97 };
 const SHINY_CHANCE         = 0.1;   // 10% 확률로 shiny 등장 (카테고리와 무관하게 독립 적용)
 const SHINY_CP_MULTIPLIER  = 1.5;   // shiny 포획 시 점수(CP) 배율. 카테고리 상관없이 통일
 const SHINY_EFFECT_DURATION = 1480; // ms - layout/0.gif 1회 재생 시간(31프레임 합산 정확히 1480ms, 루프 시작 전에 정확히 끊기도록)
+// 몬스터 페이드인(MONSTER_SHRINK_DURATION=400ms) 중간에 재생을 시작함 — 400ms(완전히 선명해질 때까지) 기다리면
+// 체감 지연이 크고, 너무 이르면(예: 200ms) 몬스터가 흐릿한 채로 겹쳐 보임. 300ms 지점(몬스터 opacity 68%)이
+// 지연 체감과 겹침 어색함 사이의 절충점
+const SHINY_EFFECT_START_DELAY = 300;
 // 아래 세 경로는 프리로드와 실제 재생 양쪽에서 항상 같은 문자열을 쓰도록 상수로 관리.
 // 쿼리스트링을 붙이지 않아야 브라우저 캐시가 재사용됨 (재생 직전 항상 다른 src가 이미
 // 들어있는 흐름이라, 쿼리스트링 없이도 브라우저가 알아서 처음부터 다시 재생해줌)
 const SHINY_EFFECT_SRC  = 'images/pokemon/layout/0.gif';
 const POKEBALL_OPEN_SRC  = 'images/pokemon/pokeball/open.gif';
 const POKEBALL_CATCH_SRC = 'images/pokemon/pokeball/catch.gif';
-
-// BST_MIN/MAX는 "normal" 카테고리 종족값 범위 참고용 (175~770).
-// 포획률패치 이후 getCatchProbability()는 지수함수 상수(CATCH_EXP_*)를 직접 쓰므로
-// 이 값 자체를 계산에 쓰진 않지만, 범위 확인/디버깅용으로 남겨둠.
-const NORMAL_BST_VALUES = NORMAL_IDS.map(id => POKEMON_DATA[id].bst);
-const BST_MIN = Math.min(...NORMAL_BST_VALUES);
-const BST_MAX = Math.max(...NORMAL_BST_VALUES);
 
 const CATCH_PROB_MAX  = 0.9;   // 종족값 최저(normal) 몬스터의 포획 성공률 (지수함수 곡선의 이론적 상한 참고값)
 const CATCH_PROB_MIN  = 0.10;  // 종족값 최고(normal) 몬스터의 포획 성공률 (지수함수 곡선의 이론적 하한 참고값)
@@ -542,9 +538,11 @@ function initGame(preselected) {
     shinyEffect.classList.add('hidden');
     shinyEffect.src = '';
     // 샤이니 패치: 몬스터 크기 계산이 끝난 뒤(onReady)에만 재생해야 #monster-sprite 크기를
-    // 정확히 읽어올 수 있음 — 동기적으로 바로 부르면 아직 계산 전이라 기본값(100%)을 읽게 됨
+    // 정확히 읽어올 수 있음 — 동기적으로 바로 부르면 아직 계산 전이라 기본값(100%)을 읽게 됨.
+    // 또한 #shiny-effect가 #monster 안에 있어 부모의 페이드인(opacity 0→1, MONSTER_SHRINK_DURATION)에
+    // 같이 가려지므로, 페이드인이 끝난 뒤에 재생을 시작해야 처음부터 끝까지 전부 보임
     displayMonsterSprite(monster, picked.src, picked.id, () => {
-        if (picked.isShiny) playShinyEffect();
+        if (picked.isShiny) setTimeout(playShinyEffect, SHINY_EFFECT_START_DELAY);
     });
     updateMonsterInfo(picked);
 
@@ -809,9 +807,9 @@ function runRunAway() {
         // 이전 shiny 이펙트 정리
         shinyEffect.classList.add('hidden');
         shinyEffect.src = '';
-        // 샤이니 패치: 크기 계산 완료(onReady) 이후에만 재생
+        // 샤이니 패치: 크기 계산 완료(onReady) 이후 + 몬스터 페이드인(MONSTER_SHRINK_DURATION) 이후에 재생
         displayMonsterSprite(monster, picked.src, picked.id, () => {
-            if (picked.isShiny) playShinyEffect();
+            if (picked.isShiny) setTimeout(playShinyEffect, SHINY_EFFECT_START_DELAY);
         });
         updateMonsterInfo(picked);
 
