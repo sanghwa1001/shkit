@@ -408,6 +408,8 @@ function stopSpriteAnimation() {
 //  프레임 하나가 박스보다 작게 그려져서 여러 마리가 동시에 보이는 버그가 있었음 — 원인을 계속
 //  좁혀가기보다, 픽셀 단위로 직접 계산해서 모호함 자체를 없애는 쪽으로 교체함)
 let currentSpriteSrc = null; // 비동기 로딩 도중 몬스터가 바뀌었는지 추적용 (style 문자열 비교보다 안전)
+let currentMonsterFrameSize = 0;   // 현재 몬스터의 원본 프레임 크기(naturalHeight) — 샤이니 이펙트가 재사용
+let currentMonsterDisplaySize = 0; // 현재 몬스터의 실제 표시 크기(SPRITE_SIZE_REF 보정 반영됨) — 샤이니 이펙트가 재사용
 
 // 이 값보다 원본 프레임(정사각형 한 변, px)이 작은 포켓몬은 박스 안에서 그만큼 작게 표시되고,
 // 이 값과 같거나 큰 포켓몬은 박스를 꽉 채움 — 종족 간 "몸집 차이"가 화면에 그대로 반영되도록 함.
@@ -470,6 +472,11 @@ function displayMonsterSprite(el, src, id, onReady) {
         const scale = boxWidth / SPRITE_REFERENCE_SIZE;
         const displaySize = Math.min(effectiveFrameSize * scale, boxWidth);
 
+        // 샤이니 이펙트가 이 몬스터의 "원본 프레임 크기 대비 실제 표시 크기 비율"을 그대로
+        // 재사용할 수 있도록 전역에 저장 (SPRITE_SIZE_REF로 크기가 보정된 종도 정확히 반영됨)
+        currentMonsterFrameSize = frameSize;
+        currentMonsterDisplaySize = displaySize;
+
         // 안쪽 레이어(sprite) 자체의 크기를 displaySize로 지정 — "보여주는 창"과 "프레임 한 칸
         // 크기"가 항상 정확히 같아지므로, 여러 프레임이 한 창에 겹쳐 보이는 문제가 생기지 않음.
         // 레이어는 CSS(top/left 50%)로 바깥 박스 정중앙 기준점을 잡고, transform에서 SPRITE_OFFSETS
@@ -531,22 +538,30 @@ function stopShinyAnimation() {
 function playShinyEffect() {
     stopShinyAnimation(); // 혹시 이전 재생이 아직 진행 중이면 정리 (연속 shiny 대비)
 
-    // 몬스터 크기에 비례하도록, 현재 #monster-sprite의 실제 표시 크기(가로)를 기준으로 스케일 계산.
-    // 프레임이 정사각형(771x771)이라 가로/세로 배율이 동일함
-    const spriteEl = document.getElementById('monster-sprite');
-    const nativeFrameSize = SHINY_NATIVE_WIDTH / SHINY_FRAME_COUNT; // 771, 반올림 없이 그대로
-    const size = spriteEl.clientWidth || spriteEl.offsetWidth || nativeFrameSize;
-    const scale = size / nativeFrameSize;
-    const frameSize = nativeFrameSize * scale; // 반올림 없이 그대로(드리프트 방지)
+    // 크기: 몬스터 그림의 "실제 내용물(투명 제외) 세로 길이"(SPRITE_OFFSETS[id].h)에, 이 몬스터가
+    // 실제로 적용받고 있는 원본→표시 배율(currentMonsterDisplaySize/currentMonsterFrameSize)을
+    // 곱해서 계산. SPRITE_SIZE_REF로 크기가 보정된 종(예: 자시안 코스튬)도 이 배율에 이미 보정이
+    // 반영되어 있어서 자동으로 정확하게 맞음(단순히 SPRITE_REFERENCE_SIZE만 쓰면 안 맞음).
+    //
+    // 위치: SPRITE_OFFSETS의 x/y는 적용하지 않음(중요) — 그 값은 "몬스터 그림을 박스 정중앙으로
+    // 옮기기 위한" 보정값이라, 몬스터에 적용하고 나면 몬스터의 실제 그림은 이미 항상 박스 정중앙에
+    // 옴(오프셋 값과 무관하게 자기 자신을 상쇄함). 그런데 이 값을 샤이니에도 그대로 적용하면
+    // "이미 정중앙이어야 할 것"을 몬스터용 보정값만큼 또 밀어버려서 오히려 어긋남 — 그래서 샤이니는
+    // 별도 보정 없이 그냥 박스 정중앙(기본 translate(-50%,-50%))에 두는 것이 정확함
+    const off = (typeof SPRITE_OFFSETS !== 'undefined' && SPRITE_OFFSETS[currentMonsterId]) || { h: 0 };
+    const frameSize = currentMonsterFrameSize || (SHINY_NATIVE_WIDTH / SHINY_FRAME_COUNT);
+    const pixelScale = currentMonsterDisplaySize / frameSize;
+    const size = (off.h || frameSize) * pixelScale;
 
-    shinyEffect.style.width  = `${frameSize}px`;
-    shinyEffect.style.height = `${frameSize}px`;
+    shinyEffect.style.width  = `${size}px`;
+    shinyEffect.style.height = `${size}px`;
     shinyEffect.style.backgroundImage = `url("${SHINY_EFFECT_SRC}")`;
-    shinyEffect.style.backgroundSize  = `${frameSize * SHINY_FRAME_COUNT}px ${frameSize}px`;
+    shinyEffect.style.backgroundSize  = `${size * SHINY_FRAME_COUNT}px ${size}px`;
+    shinyEffect.style.transform = 'translate(-50%, -50%)';
 
     let frameIndex = 0;
     const drawFrame = () => {
-        shinyEffect.style.backgroundPosition = `-${frameIndex * frameSize}px 0px`;
+        shinyEffect.style.backgroundPosition = `-${frameIndex * size}px 0px`;
     };
     drawFrame();
     shinyEffect.classList.remove('hidden');
