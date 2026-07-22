@@ -417,21 +417,50 @@ let currentMonsterDisplaySize = 0; // 현재 몬스터의 실제 표시 크기(S
 // 지난 5세대 이미지 크기 작업 때와 동일한 방식으로 산정함)
 const SPRITE_REFERENCE_SIZE = 140;
 
-// 정지 이미지(코스튬/미등록폼/shadow폼) 11종은 원본 캔버스 크기가 형제 폼(같은 species)과
-// 맞지 않아(예: 자시안 기본형 89px vs 코스튬 192px) 크기 계산이 어긋남. 파일 자체를 리사이즈하면
-// 화질 손실(이중 리샘플링)이 생기므로, 파일은 원본 그대로 두고 "크기 계산에만" 형제 폼(기본형)의
-// 크기를 참조함. 값은 기본형의 "species ID"이고, 실제 크기(h 또는 shinyH)는 렌더링 시점에
-// 일반/이로치 여부에 맞춰 SPRITE_OFFSETS에서 동적으로 가져옴 — 정지 이미지도 "일반은 자기 자신의
-// 일반 위치값, 이로치는 자기 자신의 이로치 위치값을 쓰고 크기만 기본형을 참조"하는 원칙을 일반
-// 포켓몬과 동일하게(일관되게) 적용하기 위함. 716(제르네아스)은 형제 폼과 이미 크기가 같아 값이
-// 안 바뀌지만, 정지 이미지 11종을 빠짐없이 관리한다는 일관성을 위해 포함함
-const SPRITE_SIZE_REF_SPECIES = {
+// ============================================================================
+// 정지 이미지(코스튬/미등록폼/shadow폼) 크기 보정
+// ============================================================================
+// 문제: 일부 포켓몬은 원본 캔버스 크기가 형제 폼(같은 species, 기본형)과 안 맞음
+// (예: 자시안 기본형 89px vs 코스튬 192px). 파일 자체를 리사이즈하면 화질 손실(이중 리샘플링)이
+// 생기므로, 파일은 원본 그대로 두고 "크기 계산에만" 형제 폼(기본형)의 값을 참조해서 바로잡음.
+//
+// ⚠️ 중요 — 앞으로 이 명단을 수정/추가할 때 반드시 지켜야 할 것 ⚠️
+// "정지 이미지인지 여부"는 일반(front)과 이로치(front_shiny)가 서로 다를 수 있음(실제로 9종이
+// 그랬음: 전수조사로 확인됨). 그래서 명단을 "일반용"과 "이로치용"으로 반드시 분리해서 관리함.
+//   - SPRITE_SIZE_REF_SPECIES_NORMAL: front 폴더가 실제로 "정지 이미지"인 종만 등록
+//   - SPRITE_SIZE_REF_SPECIES_SHINY : front_shiny 폴더가 실제로 "정지 이미지"인 종만 등록
+// 새 포켓몬을 추가할 때는, front 파일과 front_shiny 파일을 각각 열어서 프레임 수(가로÷세로)를
+// 직접 확인하고, "그 폴더가 진짜 정지 이미지일 때만" 해당 명단에 넣을 것. 두 명단에 무조건 같이
+// 넣으면 안 됨 — 한쪽만 문제인데 양쪽 다 등록하면, 문제없는 쪽까지 불필요하게 보정 계산이 돌게 됨
+// (지금 당장은 계산 결과가 우연히 원래 값과 같아서 티가 안 나더라도, 나중에 이미지 파일이 조금만
+// 바뀌면 언제든 엉뚱하게 어긋날 수 있는 잠재적 버그가 됨).
+//
+// 값은 기본형의 "species ID"이고, 실제 크기(h 또는 shinyH)는 렌더링 시점에 SPRITE_OFFSETS에서
+// 가져옴 — 정지 이미지도 "위치는 항상 자기 자신의 값을 쓰고, 크기만 기본형을 참조"하는 원칙을
+// 일반 포켓몬과 동일하게(일관되게) 적용하기 위함.
+const SPRITE_SIZE_REF_SPECIES_NORMAL = {
+    '716': '716',           // 형제 폼과 이미 크기가 같아 값은 안 바뀌지만, 일관성을 위해 포함
+    '25-15': '25',
+    '25-3_female': '25',
+    '70-shadow': '70',       // front만 정지 이미지, front_shiny는 정상 애니메이션 → SHINY 명단엔 없음
+    '125-shadow': '125',     // 〃
+    '554-1': '554',          // 〃
+    '791-1': '791',
+    '792-1': '792',
+    '802-1': '802',
+    '888-2': '888',
+    '889-2': '889',
+};
+const SPRITE_SIZE_REF_SPECIES_SHINY = {
     '716': '716',
     '25-15': '25',
     '25-3_female': '25',
-    '70-shadow': '70',
-    '125-shadow': '125',
-    '554-1': '554',
+    '25-1': '25',            // front_shiny만 정지 이미지, front는 정상 애니메이션 → NORMAL 명단엔 없음
+    '25-2': '25',
+    '25-3': '25',
+    '25-4': '25',
+    '25-5': '25',
+    '25-6': '25',
     '791-1': '791',
     '792-1': '792',
     '802-1': '802',
@@ -464,13 +493,23 @@ function displayMonsterSprite(el, src, id, onReady) {
         // src 경로에 "_shiny"가 있으면 이로치 버전 — 이 값 하나로 아래 크기/위치 계산을 전부 분기함
         const isShinySrc = src.includes('_shiny');
 
-        // 형제 폼과 원본 캔버스 크기가 안 맞는 정지 이미지 11종은, 기본형(species)의 실제 내용
-        // 크기를 크기 계산에만 참조함(실제 프레임 자르기는 원본 frameSize 그대로 적용됨). 일반/이로치
-        // 여부에 맞춰 기본형의 h(일반) 또는 shinyH(이로치)를 각각 참조 — "일반은 자기 자신의 일반
-        // 위치값, 이로치는 자기 자신의 이로치 위치값을 쓰되 크기만 기본형을 참조"하는 원칙을 유지
-        const refSpeciesId = SPRITE_SIZE_REF_SPECIES[id];
+        // 형제 폼과 원본 캔버스 크기가 안 맞는 정지 이미지 관련 종(SPRITE_SIZE_REF_SPECIES_NORMAL/
+        // _SHINY 명단)은, 크기 계산에만 기본형(species)을 참조함(실제 프레임 자르기는 원본
+        // frameSize 그대로 적용됨).
+        //
+        // 단순히 기본형의 그림 높이(h/shinyH)만 가져다 쓰면 안 됨 — 캔버스 안에서 그림이 차지하는
+        // "여백 비율" 자체가 기본형과 이 폼이 서로 다르기 때문(예: 자시안 기본형은 캔버스의 85%를
+        // 채우는데 코스튬은 76%만 채움). 그래서 반드시 "이 폼 자신의 여백 비율"까지 같이 반영해야
+        // 화면에 실제로 보이는 캐릭터 크기가 기본형과 맞음:
+        //   기준값 = 기본형 그림높이 × (이 폼의 원본 캔버스 ÷ 이 폼 자신의 그림높이)
+        // 일반/이로치 여부에 맞춰 "명단도, 참조하는 h/shinyH도" 각각 다른 것을 씀 — 일반과 이로치는
+        // 완전히 독립적인 파일이라, 한쪽만 정지 이미지인 경우가 있기 때문(위 명단 선언부 설명 참고)
+        const refSpeciesId = isShinySrc ? SPRITE_SIZE_REF_SPECIES_SHINY[id] : SPRITE_SIZE_REF_SPECIES_NORMAL[id];
         const refOff = refSpeciesId && typeof SPRITE_OFFSETS !== 'undefined' ? SPRITE_OFFSETS[refSpeciesId] : null;
-        const effectiveFrameSize = refOff ? (isShinySrc ? refOff.shinyH : refOff.h) : frameSize;
+        const ownOffForSize = (typeof SPRITE_OFFSETS !== 'undefined' && SPRITE_OFFSETS[id]) || { h: frameSize, shinyH: frameSize };
+        const effectiveFrameSize = refOff
+            ? (isShinySrc ? refOff.shinyH * frameSize / ownOffForSize.shinyH : refOff.h * frameSize / ownOffForSize.h)
+            : frameSize;
 
         // 바깥 박스(el)의 실제 렌더링 픽셀 크기를 기준으로 계산(반응형 스케일과 무관하게 항상 정확)
         const boxWidth = el.clientWidth || parseFloat(getComputedStyle(el).width) || 288;
