@@ -419,22 +419,24 @@ const SPRITE_REFERENCE_SIZE = 140;
 
 // 정지 이미지(코스튬/미등록폼/shadow폼) 11종은 원본 캔버스 크기가 형제 폼(같은 species)과
 // 맞지 않아(예: 자시안 기본형 89px vs 코스튬 192px) 크기 계산이 어긋남. 파일 자체를 리사이즈하면
-// 화질 손실(이중 리샘플링)이 생기므로, 파일은 원본 그대로 두고 "크기 계산에만" 쓸 기준값을 여기서
-// 대체함. 값은 "기본형 0번 프레임 내용 높이 ÷ 이 폼 0번 프레임 내용 높이 × 이 폼 원본 크기"로 산출.
-// 716(제르네아스)은 형제 폼과 이미 크기가 같아(96=96) 값이 안 바뀌지만, 정지 이미지 11종을
-// 빠짐없이 관리한다는 일관성을 위해 포함함
-const SPRITE_SIZE_REF = {
-    '716': 96,
-    '25-15': 99,
-    '25-3_female': 95,
-    '70-shadow': 89,
-    '125-shadow': 79,
-    '554-1': 97,
-    '791-1': 91,
-    '792-1': 86,
-    '802-1': 97,
-    '888-2': 99,
-    '889-2': 95,
+// 화질 손실(이중 리샘플링)이 생기므로, 파일은 원본 그대로 두고 "크기 계산에만" 형제 폼(기본형)의
+// 크기를 참조함. 값은 기본형의 "species ID"이고, 실제 크기(h 또는 shinyH)는 렌더링 시점에
+// 일반/이로치 여부에 맞춰 SPRITE_OFFSETS에서 동적으로 가져옴 — 정지 이미지도 "일반은 자기 자신의
+// 일반 위치값, 이로치는 자기 자신의 이로치 위치값을 쓰고 크기만 기본형을 참조"하는 원칙을 일반
+// 포켓몬과 동일하게(일관되게) 적용하기 위함. 716(제르네아스)은 형제 폼과 이미 크기가 같아 값이
+// 안 바뀌지만, 정지 이미지 11종을 빠짐없이 관리한다는 일관성을 위해 포함함
+const SPRITE_SIZE_REF_SPECIES = {
+    '716': '716',
+    '25-15': '25',
+    '25-3_female': '25',
+    '70-shadow': '70',
+    '125-shadow': '125',
+    '554-1': '554',
+    '791-1': '791',
+    '792-1': '792',
+    '802-1': '802',
+    '888-2': '888',
+    '889-2': '889',
 };
 
 function displayMonsterSprite(el, src, id, onReady) {
@@ -459,9 +461,16 @@ function displayMonsterSprite(el, src, id, onReady) {
         // frameCount가 1이어도(정적 이미지, 예: 716번) 아래 크기 계산은 동일하게 적용해야
         // 다른 포켓몬들과 상대적 크기가 맞음 — 프레임 반복 재생만 건너뜀(아래 참고)
 
-        // 형제 폼과 원본 캔버스 크기가 안 맞는 정지 이미지 11종은 SPRITE_SIZE_REF의 값을
-        // 크기 계산에만 사용(실제 프레임 자르기는 원본 frameSize 그대로 적용됨)
-        const effectiveFrameSize = SPRITE_SIZE_REF[id] || frameSize;
+        // src 경로에 "_shiny"가 있으면 이로치 버전 — 이 값 하나로 아래 크기/위치 계산을 전부 분기함
+        const isShinySrc = src.includes('_shiny');
+
+        // 형제 폼과 원본 캔버스 크기가 안 맞는 정지 이미지 11종은, 기본형(species)의 실제 내용
+        // 크기를 크기 계산에만 참조함(실제 프레임 자르기는 원본 frameSize 그대로 적용됨). 일반/이로치
+        // 여부에 맞춰 기본형의 h(일반) 또는 shinyH(이로치)를 각각 참조 — "일반은 자기 자신의 일반
+        // 위치값, 이로치는 자기 자신의 이로치 위치값을 쓰되 크기만 기본형을 참조"하는 원칙을 유지
+        const refSpeciesId = SPRITE_SIZE_REF_SPECIES[id];
+        const refOff = refSpeciesId && typeof SPRITE_OFFSETS !== 'undefined' ? SPRITE_OFFSETS[refSpeciesId] : null;
+        const effectiveFrameSize = refOff ? (isShinySrc ? refOff.shinyH : refOff.h) : frameSize;
 
         // 바깥 박스(el)의 실제 렌더링 픽셀 크기를 기준으로 계산(반응형 스케일과 무관하게 항상 정확)
         const boxWidth = el.clientWidth || parseFloat(getComputedStyle(el).width) || 288;
@@ -488,8 +497,11 @@ function displayMonsterSprite(el, src, id, onReady) {
         // SPRITE_OFFSETS의 종별 x/y 보정값은 "원본 그림(frameSize)의 실제 픽셀" 기준으로 계산된
         // 값이므로, 원본이 화면에 실제로 얼마나 축소되는지(displaySize/frameSize)에 맞춰 적용해야
         // 정확함. SPRITE_SIZE_REF로 표시 크기만 강제로 줄인 경우(원본 픽셀은 그대로 큼) generic한
-        // scale(boxWidth/140)을 그대로 쓰면 보정값이 과하게 적용되므로 반드시 이 비율을 곱해야 함
-        const off = (typeof SPRITE_OFFSETS !== 'undefined' && SPRITE_OFFSETS[id]) || { x: 0, y: 0 };
+        // scale(boxWidth/140)을 그대로 쓰면 보정값이 과하게 적용되므로 반드시 이 비율을 곱해야 함.
+        // 위치는 항상 "자기 자신"의 값을 쓰고(기본형 참조 아님), 일반/이로치 버전이 그림 구조 자체가
+        // 다른 종(39종)이 있어서 일반은 x/y, 이로치는 shinyX/shinyY를 반드시 구분해서 사용함
+        const ownOff = (typeof SPRITE_OFFSETS !== 'undefined' && SPRITE_OFFSETS[id]) || { x: 0, y: 0, shinyX: 0, shinyY: 0 };
+        const off = { x: isShinySrc ? ownOff.shinyX : ownOff.x, y: isShinySrc ? ownOff.shinyY : ownOff.y };
         const pixelScale = displaySize / frameSize;
         const dx = off.x * pixelScale;
         const dy = off.y * pixelScale;
@@ -538,20 +550,21 @@ function stopShinyAnimation() {
 function playShinyEffect() {
     stopShinyAnimation(); // 혹시 이전 재생이 아직 진행 중이면 정리 (연속 shiny 대비)
 
-    // 크기: 몬스터 그림의 "실제 내용물(투명 제외) 세로 길이"(SPRITE_OFFSETS[id].h)에, 이 몬스터가
-    // 실제로 적용받고 있는 원본→표시 배율(currentMonsterDisplaySize/currentMonsterFrameSize)을
-    // 곱해서 계산. SPRITE_SIZE_REF로 크기가 보정된 종(예: 자시안 코스튬)도 이 배율에 이미 보정이
-    // 반영되어 있어서 자동으로 정확하게 맞음(단순히 SPRITE_REFERENCE_SIZE만 쓰면 안 맞음).
+    // 크기: 몬스터 그림의 "실제 내용물(투명 제외) 세로 길이"(SPRITE_OFFSETS[id].shinyH — 이 함수는
+    // 항상 이로치 몬스터에 대해서만 호출되므로 이로치 전용 값을 씀)에, 이 몬스터가 실제로 적용받고
+    // 있는 원본→표시 배율(currentMonsterDisplaySize/currentMonsterFrameSize)을 곱해서 계산.
+    // SPRITE_SIZE_REF로 크기가 보정된 종(예: 자시안 코스튬)도 이 배율에 이미 보정이 반영되어 있어서
+    // 자동으로 정확하게 맞음(단순히 SPRITE_REFERENCE_SIZE만 쓰면 안 맞음).
     //
     // 위치: SPRITE_OFFSETS의 x/y는 적용하지 않음(중요) — 그 값은 "몬스터 그림을 박스 정중앙으로
     // 옮기기 위한" 보정값이라, 몬스터에 적용하고 나면 몬스터의 실제 그림은 이미 항상 박스 정중앙에
     // 옴(오프셋 값과 무관하게 자기 자신을 상쇄함). 그런데 이 값을 샤이니에도 그대로 적용하면
     // "이미 정중앙이어야 할 것"을 몬스터용 보정값만큼 또 밀어버려서 오히려 어긋남 — 그래서 샤이니는
     // 별도 보정 없이 그냥 박스 정중앙(기본 translate(-50%,-50%))에 두는 것이 정확함
-    const off = (typeof SPRITE_OFFSETS !== 'undefined' && SPRITE_OFFSETS[currentMonsterId]) || { h: 0 };
+    const off = (typeof SPRITE_OFFSETS !== 'undefined' && SPRITE_OFFSETS[currentMonsterId]) || { shinyH: 0 };
     const frameSize = currentMonsterFrameSize || (SHINY_NATIVE_WIDTH / SHINY_FRAME_COUNT);
     const pixelScale = currentMonsterDisplaySize / frameSize;
-    const size = (off.h || frameSize) * pixelScale;
+    const size = (off.shinyH || frameSize) * pixelScale;
 
     shinyEffect.style.width  = `${size}px`;
     shinyEffect.style.height = `${size}px`;
