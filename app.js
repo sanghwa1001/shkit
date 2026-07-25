@@ -11,6 +11,9 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+// 보안 규칙(auth != null)을 통과하기 위한 익명 로그인 — 로그인 화면/방식에는 영향 없음,
+// 앱이 켜지자마자 자동으로(눈에 안 보이게) 인증 토큰을 받아옴
+firebase.auth().signInAnonymously();
 
 const DEFAULT_AVATARS = ['image_0.gif', 'image_1.gif'];
 const ALL_SHOP_AVATARS = ['1.gif', '2.gif', '3.gif', '4.gif', '5.gif', '6.gif', '7.gif', '8.gif', '9.gif', '10.gif'];
