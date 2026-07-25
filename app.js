@@ -11,9 +11,6 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
-// 보안 규칙(auth != null)을 통과하기 위한 익명 로그인 — 로그인 화면/방식에는 영향 없음,
-// 앱이 켜지자마자 자동으로(눈에 안 보이게) 인증 토큰을 받아옴
-firebase.auth().signInAnonymously();
 
 const DEFAULT_AVATARS = ['image_0.gif', 'image_1.gif'];
 const ALL_SHOP_AVATARS = ['1.gif', '2.gif', '3.gif', '4.gif', '5.gif', '6.gif', '7.gif', '8.gif', '9.gif', '10.gif'];
@@ -106,6 +103,12 @@ function shuffleArray(array) {
     }
     return array;
 }
+
+// 보안 규칙(auth != null)을 통과하기 위한 익명 로그인 — 로그인 화면/방식에는 영향 없음,
+// 앱이 켜지자마자 자동으로(눈에 안 보이게) 인증 토큰을 받아옴.
+// 아래의 실시간 리스너들은 인증이 끝나기 전에 실행되면 규칙에 막혀서 데이터를 못 받아오므로,
+// 반드시 signInAnonymously()가 완료된 뒤(.then 안)에서만 실행되도록 함
+firebase.auth().signInAnonymously().then(() => {
 
 db.ref('studentAccounts').on('value', (snapshot) => {
     localStudentAccounts = snapshot.val() || {};
@@ -234,6 +237,8 @@ db.ref('learningData').on('value', (snapshot) => {
     if (document.getElementById('admin-edit-words-page').classList.contains('active') && currentEditDataSet) renderWordsList(currentEditDataSet);
     if (document.getElementById('student-select-data-page').classList.contains('active')) renderStudentDataList();
 });
+
+}); // firebase.auth().signInAnonymously().then(...) 끝 — 위 실시간 리스너들은 여기까지
 
 function listenForGemRequests() {
     db.ref(`gemRequests/${currentUser}`).on('value', snapshot => {
