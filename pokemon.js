@@ -364,7 +364,7 @@ function registerDexCatch(monsterId, isShiny) {
         saveOwnedDex(ownedDexSpecies);
         cloudUpdates['species/' + species] = true;
     }
-    if (!ownedDexForms.has(monsterId)) {
+    if (!isShiny && !ownedDexForms.has(monsterId)) {
         ownedDexForms.add(monsterId);
         saveOwnedDexForms(ownedDexForms);
         cloudUpdates['forms/' + monsterId] = true;
@@ -2709,10 +2709,13 @@ function showDexInfoForm(cellFormId) {
     const formInfo = POKEMON_DATA[realId] || { name: '???' };
     const unlocked = isShiny ? isFormShinyUnlocked(realId) : isFormUnlocked(realId);
     const colored  = isShiny ? isFormShinyColored(realId)  : isFormColored(realId);
+    // 이름은 도감 목록과 동일하게 "종 단위" 잠금해제 기준을 씀 — 어떤 폼을 선택하든 이름 텍스트
+    // 자체는 항상 같은 종 이름이라, 폼 단위로 가릴 실익이 없고 목록 화면과 기준이 어긋나는 걸 방지함
+    const nameUnlocked = isSpeciesUnlocked(dexInfoCurrentSpecies);
 
     const repId = formInfo.species ? dexRepresentativeId(formInfo.species) : realId;
     const repInfo = POKEMON_DATA[repId] || formInfo;
-    dexInfoNameEl.textContent = unlocked ? repInfo.name : '???';
+    dexInfoNameEl.textContent = nameUnlocked ? repInfo.name : '???';
     dexInfoSpriteEl.classList.toggle('locked', !unlocked);
     dexInfoSpriteEl.classList.toggle('grayed', unlocked && !colored);
     renderDexInfoSprite(cellFormId);
@@ -2723,10 +2726,10 @@ function showDexInfoForm(cellFormId) {
 }
 
 // species를 받아 정보 화면을 채우고 목록 대신 표시함. 미포획 종을 눌렀을 때도 호출되며(이름/스프라이트가
-// "???"·실루엣으로만 나옴). 도감번호는 species(종) 단위 정보라 항상 고정 표시되고,
-// 이름/스프라이트는 showDexInfoForm이 처리하는 "폼 단위" 정보라 대표폼부터 시작해서 폼 그리드
-// 선택에 따라 바뀜. 이로치 여부는 메가/거다이맥스와 마찬가지로 별도 배지 없이 폼 그리드의
-// 컬러(포획)/실루엣(미포획) 구분만으로 표시함
+// "???"·실루엣으로만 나옴). 도감번호는 species(종) 단위 정보라 항상 고정 표시되고, 이름도 도감 목록과
+// 동일하게 종 단위로 판단함(showDexInfoForm의 nameUnlocked 참고) — 스프라이트만 showDexInfoForm이
+// 처리하는 "폼 단위" 정보라 대표폼부터 시작해서 폼 그리드 선택에 따라 바뀜. 이로치 여부는 메가/거다이맥스와
+// 마찬가지로 별도 배지 없이 폼 그리드의 컬러(포획)/실루엣(미포획) 구분만으로 표시함
 function openDexInfo(species) {
     const repId = dexRepresentativeId(species);
 
