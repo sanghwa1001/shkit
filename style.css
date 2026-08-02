@@ -904,9 +904,10 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
     transform: translate(1px, 1px);
 }
 
-/* 상티런 #game-wrapper, 헌터 #mh-game-wrapper와 동일한 방식:
-   CSS aspect-ratio로 비율을 못박아두고 max-width/max-height로 화면에 맞춰 키움 —
-   화면 회전 시에도 브라우저가 레이아웃 계산과 동시에 처리해서 JS 타이밍에 좌우되지 않음 */
+
+/* #game-frame: CSS aspect-ratio(370:600)로 비율을 못박아두고 화면에 맞춰 키움 —
+   화면 회전 등 크기 변화에도 브라우저가 레이아웃 계산과 동시에 정확한 비율을 유지해줌.
+   script.js는 이 실제 렌더링 너비를 읽어 #game-container를 그 배율로 scale()함. */
 #game-frame {
     width: 100%;
     max-width: calc((100dvh - 30px) * 370 / 600);
@@ -1102,7 +1103,9 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
 #captured-box {
     position: relative;
     width: 300px;
-    max-height: 480px;
+    /* 도감 창(#dex-box)과 동일하게 고정 height로 맞춰서, 포획한 포켓몬 수가 적어도 창 크기가
+       줄어들지 않고 항상 같은 크기를 유지하도록 함(#captured-list가 flex:1로 남는 공간을 채움) */
+    height: 480px;
     box-sizing: border-box;
     padding: 28px 14px 18px;
     background-color: #ffffff;
@@ -1122,8 +1125,8 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
 }
 
 #captured-list {
+    flex: 1;
     overflow-y: auto;
-    max-height: 380px;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -1143,7 +1146,7 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
 
 .captured-icon {
     width: 32px;
-    height: 32px; /* 새 아이콘(32x32, 1:1 비율)에 맞춤 — 기존 40x30(4:3) 아이콘용 24px에서 변경 */
+    height: 32px; /* 새 아이콘(32x32, 1:1 비율)에 맞춤 */
     flex-shrink: 0;
     image-rendering: pixelated;
     image-rendering: -moz-crisp-edges;
@@ -1277,11 +1280,8 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
     transition: opacity 0.4s ease-in; /* 몬스터(#monster)와 동일한 페이드 속도 */
 }
 
-/* 이름/종족값 텍스트는 hp_bar.png 속 초록 게이지 시작 x위치(가로 약 29.2%)에 좌측 정렬,
-   hp_bar 상단에서 10px 위에 표시 */
-/* 이름표시패치: hp바(#monster-info) 밖으로 분리되어 #game-container 기준 좌표로 변경.
-   가로: 화면 전체 폭 기준 중앙정렬(긴 이름이 hp바 폭 밖으로 잘리는 문제 해결)
-   세로: 기존과 동일한 위치가 나오도록 수식으로 계산(--info-top 기준 3px 위, 절대값 그대로 유지) */
+/* 이름/종족값 텍스트: #game-container 기준 좌표로 가로는 화면 전체 폭 기준 중앙정렬(긴 이름이
+   hp바 폭 밖으로 잘리는 문제 방지), 세로는 --info-top 기준 3px 위 위치 유지 */
 #monster-info-text {
     position: absolute;
     left: 50%;
@@ -1380,14 +1380,9 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
     transition: opacity 0.28s ease-in, transform 0.28s ease-in; /* 포획 흡수 전용 — 기본 0.4s의 70% */
 }
 
-/* shiny 등장 이펙트 — 몬스터와 완전히 같은 크기/위치로 겹쳐서 표시 */
-/* 샤이니 패치: 이제 #monster 안쪽에 위치 — top/left는 #monster 기준 상대좌표.
-   width/height는 재생 시점에 JS가 #monster-sprite와 동일하게 맞춰줌(고정값 없음) */
-/* 베타 구조로 복귀: #monster 밖의 독립 요소. top은 몬스터 박스의 세로 중앙(--monster-top +
+/* shiny 등장 이펙트 — #monster 밖의 독립 요소. top은 몬스터 박스의 세로 중앙(--monster-top +
    --monster-size/2)을 가리키고, translate(-50%,-50%)로 그 지점에 요소 중심을 맞춤.
-   width/height는 재생 시점에 JS가 몬스터 크기에 맞춰 지정함(크기 비례 기능은 유지) */
-/* 샤이니 이펙트 패치: GIF 대신 PNG 필름스트립(shiny.png, 23901x771, 31프레임×771×771 정사각형)
-   + JS 프레임 제어 방식. width/height/background-size/position은 재생 시점에 JS가 지정함 */
+   width/height/background-size/position은 재생 시점에 JS가 몬스터 크기에 맞춰 지정함 */
 #shiny-effect {
     position: absolute;
     top: calc(var(--monster-top) + var(--monster-size) / 2);
@@ -1411,8 +1406,8 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
     height: var(--ball-size);
     object-fit: contain;
     z-index: 5;
-    transition: bottom 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); /* 몬스터볼 패치: JS THROW_DURATION(400ms)과 반드시 동일하게 유지 */
-    image-rendering: pixelated; /* 몬스터볼 패치: 원본 해상도가 32~64px로 작아져 확대 시 흐려지는 것 방지 */
+    transition: bottom 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); /* script.js THROW_DURATION(400ms)과 반드시 동일하게 유지 */
+    image-rendering: pixelated;
     image-rendering: -moz-crisp-edges;
     image-rendering: crisp-edges;
 }
@@ -1444,4 +1439,595 @@ input:disabled { background-color: #e9ecef; cursor: not-allowed; }
 
 #pokeball.landing {
     animation: ball-land 0.28s ease-out;
+}
+
+/* =====================================================
+   📖 포켓몬 도감 — "포획한 포켓몬" 목록 창(#captured-box)과 동일한 디자인 언어로 통일
+   (흰 바탕 + 검정 테두리, 별도 배색/이미지 장식 없이 담백하게 구성. 이전에 쓰던 어나더 레드
+   참조 이미지(images/pokemon/pokedex/*)는 더 이상 쓰지 않음 — 폴더째로 삭제해도 무방함)
+   ===================================================== */
+#dex-modal {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 40;
+}
+
+#dex-box {
+    position: relative;
+    width: 300px;
+    /* max-height만 있으면 내용(필터링된 행 개수)에 따라 박스 자체가 줄어듦 — "포획한 것만
+       보기"로 행이 적어져도 창 크기가 그대로 유지되도록 고정 height로 바꾸고, #dex-list가
+       flex:1로 남는 공간을 항상 채운 뒤 내부에서만 스크롤되게 함 */
+    height: 480px;
+    box-sizing: border-box;
+    /* 위쪽 34px: 모서리에 절대배치되는 닫기/뒤로가기 버튼(top:6px + 높이 26px = 32px)이
+       완전히 들어가고도 남을 만큼 여유를 둠(#captured-box의 28px보다 살짝 더 크게 잡음 —
+       #captured-box는 버튼과 겹치는 대신 짧은 제목 텍스트라 티가 안 났지만, 도감은 검색창이
+       가로로 꽉 차서 버튼과 실제로 겹치면 바로 눈에 띄기 때문) */
+    padding: 34px 14px 18px;
+    background-color: #ffffff;
+    border: 4px solid #1a1a1a;
+    border-radius: 6px;
+    font-family: var(--pixel-font);
+    display: flex;
+    flex-direction: column;
+}
+
+/* 검색창 한 줄. 닫기(#dex-close-btn)/뒤로가기(#dex-back-btn) 버튼은 .quiz-close-btn과
+   같은 방식으로 #dex-box 모서리에 position:absolute로 떠 있고(top:6px, 너비 26px), 그 폭이
+   #dex-header의 좌우 안쪽까지 파고들기 때문에, 검색창이 버튼과 겹치지 않도록 좌우에 20px씩
+   여백을 둬서 항상 버튼 바깥쪽에서만 폭을 차지하게 함(남는 폭은 flex:1이 전부 차지) */
+#dex-header {
+    flex-shrink: 0;
+    display: flex;
+    padding: 0 20px;
+    margin-bottom: 10px;
+}
+
+/* 이름 또는 도감번호로 목록을 실시간으로 좁혀주는 검색창 — 포획 목록의 담백한 흰/회색 톤에
+   맞춰 채색하고, 헤더 폭 전체를 차지해 중앙에 충분히 크게 배치됨 */
+.dex-search-input {
+    flex: 1;
+    min-width: 0;
+    height: 30px;
+    box-sizing: border-box;
+    padding: 0 12px;
+    border: 2px solid #1a1a1a;
+    border-radius: 15px;
+    background-color: #f7f7f7;
+    font-family: var(--pixel-font);
+    font-size: 13px;
+    letter-spacing: 0.3px;
+    color: #000;
+    outline: none;
+}
+
+.dex-search-input::placeholder {
+    color: #9aa0a8;
+}
+
+.dex-search-input:focus {
+    background-color: #ffffff;
+    box-shadow: 0 0 0 2px rgba(26, 26, 26, 0.15);
+}
+
+/* 검색과 무관하게 항상 "전체 포획 진행도"를 보여주는 카운트 표시 (#captured-title처럼
+   심플하게 가운데 정렬된 텍스트 한 줄로 처리) */
+/* 좌측: 포획한 것만 보기 체크박스 / 우측: 진행도 숫자("1 / 1025") — 도감 칸(.dex-row)의
+   좌우 폭에 맞춰 양 끝 정렬함(검색과 무관하게 항상 전체 기준 숫자를 보여줌) */
+#dex-count-bar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    /* #dex-list가 좌우 4px 패딩을 가진 채로 .dex-row를 담고 있어서(도감 칸 자체는 그만큼
+       안쪽에서 시작함), 이 바도 동일하게 4px씩 인셋을 줘야 체크박스/카운트 양끝이 도감 칸의
+       좌우 끝과 정확히 같은 선에 맞음 */
+    padding: 0 4px;
+    box-sizing: border-box;
+    margin-bottom: 12px;
+}
+
+.dex-owned-only-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    letter-spacing: 0.3px;
+    color: #555;
+    cursor: pointer;
+    user-select: none;
+    text-align: left;
+}
+
+.dex-owned-only-label input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    accent-color: #1a1a1a;
+    cursor: pointer;
+}
+
+#dex-count-text {
+    flex-shrink: 0;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    color: #666;
+    text-align: right;
+}
+
+#dex-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 4px;
+}
+
+/* .captured-row와 동일한 스타일(흰 배경 대신 옅은 회색, 2px 검정 테두리, 각진 모서리) */
+.dex-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    box-sizing: border-box;
+    border: 2px solid #1a1a1a;
+    background-color: #f0f0f0;
+    text-align: left;
+    cursor: pointer; /* 포획 여부와 무관하게 눌러서 정보 화면으로 이동 가능 (미포획 종은 "???" + 실루엣으로 표시됨) */
+}
+
+.dex-row:hover {
+    background-color: #e6e6e6;
+}
+
+.dex-row:active {
+    transform: translate(1px, 1px);
+}
+
+.dex-num {
+    flex-shrink: 0;
+    width: 40px;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    color: #888;
+}
+
+.dex-icon {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px; /* .captured-icon과 동일 크기 */
+    background-repeat: no-repeat;
+    background-position: 0 0;
+    background-size: 200% 100%; /* 아이콘 스프라이트시트 2프레임 중 첫 프레임만 사용 */
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+}
+
+/* 미포획 항목: 실제 아이콘 이미지(JS에서 그대로 로드)를 검은 실루엣(그림자)으로만 보이게 처리.
+   brightness(0)이 색이 있는 픽셀을 전부 검게 만들고(투명 영역은 그대로 투명 유지되어 윤곽만
+   남음), opacity로 살짝 흐리게 낮춰 "그림자"에 가깝게 보이도록 함 — 색/무늬 등 실제 정보는
+   가려지고 형태만 드러남 */
+.dex-icon.locked {
+    filter: brightness(0);
+    opacity: 0.55;
+}
+
+/* 치트 코드(DexAll)로 언락되었지만(이름은 공개) 실제로 잡은 적은 없는 상태 — 검은 실루엣과
+   달리 형태/무늬가 흑백으로는 그대로 보이되 색 정보만 빠져서, 실제 포획(컬러)과 확실히 구분됨 */
+.dex-icon.grayed {
+    filter: grayscale(100%);
+}
+
+.dex-name {
+    flex: 1;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    color: #000;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dex-row.locked .dex-name {
+    color: #9aa0a8;
+}
+
+/* 포획 완료 배지 — images/pokemon/pokedex/icon_own.png 아이콘 이미지를 그대로 표시 (기존에는
+   순수 CSS로 그린 초록 원 + 체크 표시였음) */
+.dex-owned-badge {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    box-sizing: border-box;
+    background-image: url('images/pokemon/pokedex/icon_own.png');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+}
+
+#dex-empty {
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    color: #666;
+    text-align: center;
+    padding: 20px 0;
+}
+
+/* 도감 헤더의 '‹' 뒤로가기 버튼 — 닫기(×) 버튼(.quiz-close-btn)과 완전히 같은 스타일/좌표계로,
+   #dex-box 모서리에 반대쪽(왼쪽)에 절대위치로 배치. 검색창이 있는 #dex-header 흐름과는
+   무관하게 떠 있으므로 서로 절대 겹치지 않음 */
+.dex-back-btn {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    width: 26px;
+    height: 26px;
+    line-height: 20px;
+    border: 2px solid #1a1a1a;
+    background-color: #ff4757;
+    color: #fff;
+    font-family: var(--pixel-font);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0;
+}
+
+.dex-back-btn:hover {
+    background-color: #ff6b81;
+}
+
+/* 도감 헤더의 '⚙' 설정 버튼 — 뒤로가기 버튼과 완전히 같은 자리(왼쪽 위 모서리)를 쓰되, 서로
+   동시에 보이지 않도록 항상 반대로 토글됨(목록 화면=설정 버튼, 정보/설정 화면=뒤로가기 버튼).
+   빨간 뒤로가기/닫기 버튼과 구분되도록 "위험하지 않은" 중립 회색으로 채색 */
+.dex-settings-btn {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    width: 26px;
+    height: 26px;
+    line-height: 24px;
+    border: 2px solid #1a1a1a;
+    background-color: #6c757d;
+    color: #fff;
+    font-family: var(--pixel-font);
+    font-size: 13px;
+    cursor: pointer;
+    padding: 0;
+    text-align: center;
+}
+
+.dex-settings-btn:hover {
+    background-color: #7f868d;
+}
+
+/* =====================================================
+   ⚙ 도감 설정 화면 (좌측 상단 설정 버튼을 누르면 #dex-list 대신 표시됨)
+   ===================================================== */
+#dex-settings,
+#dex-reset-page,
+#dex-cheat-page {
+    flex: 1;
+    overflow-y: auto;
+    box-sizing: border-box;
+    padding: 4px 4px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#dex-settings-title,
+#dex-reset-page-title,
+#dex-cheat-page-title {
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    color: #000;
+    text-align: center;
+    margin-bottom: 2px;
+}
+
+.dex-settings-action-btn {
+    width: 100%;
+    box-sizing: border-box;
+    font-family: var(--pixel-font);
+    font-size: 13px;
+    letter-spacing: 0.3px;
+    padding: 10px;
+    border: 2px solid #1a1a1a;
+    background-color: #f0f0f0;
+    color: #000;
+    cursor: pointer;
+}
+
+.dex-settings-action-btn:hover {
+    background-color: #e6e6e6;
+}
+
+.dex-settings-action-btn:active {
+    transform: translate(1px, 1px);
+}
+
+/* 되돌릴 수 없는 파괴적 동작(실제 초기화 확정)만 위험 색상으로 강조 */
+.dex-settings-action-btn.dex-danger {
+    background-color: #ff4757;
+    color: #fff;
+}
+
+.dex-settings-action-btn.dex-danger:hover {
+    background-color: #ff6b81;
+}
+
+/* 치트 코드 / 도감 초기화 입력 행 공용 — 검색창(.dex-search-input)과 같은 톤의 알약형
+   입력창 + 버튼을 한 줄에 배치. 두 페이지가 완전히 같은 상호작용 방식(각자 전용 페이지에서
+   입력 후 버튼 클릭, 전용 취소 버튼 없이 뒤로가기로 복귀)을 쓰므로 레이아웃도 하나의 규칙으로
+   공유함 */
+#dex-cheat-row,
+#dex-reset-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.dex-cheat-input {
+    flex: 1;
+    min-width: 0;
+    height: 34px;
+    box-sizing: border-box;
+    padding: 0 12px;
+    border: 2px solid #1a1a1a;
+    border-radius: 15px;
+    background-color: #f7f7f7;
+    font-family: var(--pixel-font);
+    font-size: 13px;
+    letter-spacing: 0.3px;
+    color: #000;
+    outline: none;
+}
+
+.dex-cheat-input::placeholder {
+    color: #9aa0a8;
+}
+
+.dex-cheat-input:focus {
+    background-color: #ffffff;
+    box-shadow: 0 0 0 2px rgba(26, 26, 26, 0.15);
+}
+
+/* 입력창(.dex-cheat-input)과 나란히 놓이는 버튼이라 border-radius도 입력창과 똑같이 15px로
+   맞춰서 한 세트로 보이게 함 — 치트 코드의 "적용하기"와 도감 초기화의 "초기화" 버튼 둘 다
+   이 클래스를 공유하므로 동시에 적용됨 */
+.dex-cheat-apply-btn {
+    width: auto;
+    flex-shrink: 0;
+    height: 34px;
+    padding: 0 14px;
+    border-radius: 15px;
+}
+
+#dex-cheat-feedback,
+#dex-reset-feedback {
+    min-height: 14px;
+    font-size: 11px;
+    letter-spacing: 0.3px;
+    text-align: center;
+    word-break: keep-all; /* 줄바꿈이 필요할 때 글자 단위가 아니라 띄어쓰기 기준 의미단위로 넘어가게 함 */
+    overflow-wrap: break-word;
+}
+
+#dex-cheat-feedback.success,
+#dex-reset-feedback.success {
+    color: #2ed573;
+}
+
+#dex-cheat-feedback.error,
+#dex-reset-feedback.error {
+    color: #b8281f;
+}
+
+/* =====================================================
+   📄 포켓몬 정보 화면 (도감 목록에서 포획한 종을 누르면 #dex-list 대신 표시됨)
+   ===================================================== */
+/* 번호/이름/큰 스프라이트 카드는 항상 고정으로 보이고, 폼 칸이 많아 넘칠 때는
+   #dex-info-form-grid 영역만 따로 스크롤되게 함(스크롤해도 위쪽 큰 카드는 안 밀려서
+   원하는 폼을 바로바로 확인하기 편함) — 그래서 이 컨테이너 자체는 더 이상 스크롤하지 않고,
+   min-height:0으로 자식(그리드)이 남은 공간 안에서만 늘어나도록 허용함 */
+#dex-info {
+    flex: 1;
+    min-height: 0;
+    box-sizing: border-box;
+    padding: 0 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+/* 스프라이트를 담는 카드 — 목록의 .dex-row와 같은 회색/검정 테두리 톤으로 통일 */
+#dex-info-sprite-card {
+    width: 100%;
+    box-sizing: border-box;
+    background-color: #f0f0f0;
+    border: 2px solid #1a1a1a;
+    padding: 14px 0 10px;
+    display: flex;
+    justify-content: center;
+}
+
+#dex-info-sprite-box {
+    position: relative;
+    width: 140px;
+    height: 140px;
+}
+
+#dex-info-sprite {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+    background-repeat: no-repeat;
+    background-position: 0 0;
+    /* background-image/size/position은 renderDexInfoSprite()가 JS로 설정함 */
+}
+
+/* 대표폼(repId) 자체를 정확히 잡은 적 없는 경우(openDexInfo에서 토글) — 실제로 종을 잡았어도
+   대표폼이 아닌 다른 폼만 잡았을 수 있어서, 목록의 .dex-icon.locked와 동일한 방식으로 검은
+   실루엣(그림자) 처리함 */
+#dex-info-sprite.locked {
+    filter: brightness(0);
+    opacity: 0.55;
+}
+
+#dex-info-sprite.grayed {
+    filter: grayscale(100%);
+}
+
+#dex-info-num {
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    color: #888;
+}
+
+#dex-info-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#dex-info-name {
+    font-size: 18px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    color: #000;
+}
+
+
+/* =====================================================
+   폼 그리드 (대표폼 포함, 리전/성별/코스튬/그림자 등 일반폼 + 메가진화 + 거다이맥스, 그리고 각
+   폼 바로 뒤에 그 폼 전용 "색이 다른" 이로치 가상 칸이 1:1로 붙음) 한 줄에 3칸씩 배치. 모든
+   칸은 정지 아이콘만 사용(잡은 폼은 컬러, 못 잡은 폼은 검은 실루엣). 칸을 클릭하면 위쪽 큰
+   카드가 해당 폼의 움직이는 스프라이트로 전환됨(showDexInfoForm). 정렬 순서는
+   renderDexFormGrid/DEX_FORM_BUCKET_ORDER 참고.
+   ===================================================== */
+#dex-info-form-grid {
+    width: 100%;
+    box-sizing: border-box;
+    display: grid;
+    /* "1fr"는 기본적으로 minmax(auto, 1fr)라, 텍스트가 있으면 그 칸의 최소폭이 텍스트 길이만큼
+       벌어져서 같은 줄의 다른 칸들과 폭이 제각각으로 달라짐(아이콘 크기/위치도 칸 폭에 비례해서
+       같이 어긋남). minmax(0, 1fr)로 최소폭을 0으로 강제해야 내용과 무관하게 3칸이 항상 균등한
+       폭을 갖음. 긴 이름은 .dex-form-name에서 3줄까지 줄바꿈되어 전부 표시됨(말줄임 없음) */
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 4px;
+    /* 위쪽 스프라이트 카드는 고정해두고 폼 칸이 넘칠 때는 이 그리드 영역만 독립적으로
+       스크롤되게 함(#dex-info 주석 참고). align-content:start를 안 주면 칸 수가 적어
+       내용이 짧을 때 grid auto-rows가 늘어나 세로 중앙정렬처럼 보이는 문제가 있어서 항상
+       위에서부터 채우도록 고정 */
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    align-content: start;
+    padding-bottom: 4px;
+}
+
+.dex-form-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 4px 5px;
+    box-sizing: border-box;
+    background-color: #f0f0f0;
+    border: 2px solid #1a1a1a;
+    cursor: pointer; /* 눌러서 큰 카드에 이 폼을 미리보기(showDexInfoForm) */
+}
+
+.dex-form-cell:hover {
+    background-color: #e6e6e6;
+}
+
+.dex-form-cell:active {
+    transform: translate(1px, 1px);
+}
+
+/* 지금 위쪽 큰 카드에 표시 중인 폼 강조 표시 */
+.dex-form-cell.selected {
+    border-color: #e6392f;
+    background-color: #fbe9e7;
+}
+
+.dex-form-sprite-box {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+}
+
+/* 폼 그리드 칸은 전부 가벼운 정지 아이콘(32x32)만 사용함 — 움직이는 애니메이션은 위쪽 큰 카드
+   전용(renderDexInfoSprite). 못 잡은 폼은 목록의 .dex-icon.locked와 동일하게 검은 실루엣 처리 */
+.dex-form-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 32px;
+    height: 32px;
+    background-repeat: no-repeat;
+    background-position: 0 0;
+    background-size: 200% 100%;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+}
+
+.dex-form-icon.locked {
+    filter: brightness(0);
+    opacity: 0.55;
+}
+
+.dex-form-icon.grayed {
+    filter: grayscale(100%);
+}
+
+/* 이름표는 말줄임(...) 없이 최대 3줄까지 전부 보여줌 — word-break:keep-all로 한글 단어(의미단위)
+   중간이 아니라 띄어쓰기 기준으로만 줄바꿈되게 하고, height를 3줄 고정값으로 둬서 1~2줄짜리
+   이름을 가진 칸도 전부 같은 칸 높이가 되도록 함(칸마다 높이가 들쭉날쭉해지는 것 방지).
+   폼별 "색이 다른" 칸이 추가되면서 "밀키바닐라 딸기사탕공예 색이 다른"처럼 원래 폼 이름(최대
+   4단어)에 " 색이 다른"까지 붙는 조합이 생겨 2줄로는 부족한 경우(실측 최대 63개 칸, 869번
+   마휘핑 계열)가 있어 3줄로 늘림 — 실측 결과 3줄을 넘는 조합은 없음(2026-08 검증).
+   line-clamp는 혹시라도 3줄을 넘는 극단적으로 긴 이름에 대한 안전장치(잘림 방지가 기본 목표라
+   실제로 동작할 일은 거의 없음) */
+.dex-form-name {
+    width: 100%;
+    font-size: 10px;
+    line-height: 11px;
+    height: 33px;
+    letter-spacing: 0.2px;
+    color: #000;
+    text-align: center;
+    overflow: hidden;
+    white-space: normal;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
+.dex-form-name.locked {
+    color: #9aa0a8;
 }
