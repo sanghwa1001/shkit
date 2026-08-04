@@ -196,9 +196,15 @@ const DEX_FORMS_STORAGE_KEY = 'pokemonCatchGame_ownedDexForms_v1';  // 포획한
 // 적이 있는지를 폼 단위로 기록함. 폼 그리드는 이 목록만으로 색/실루엣을 구분해서 보여줌
 const DEX_SHINY_FORMS_STORAGE_KEY = 'pokemonCatchGame_ownedDexShinyForms_v1';
 
+// 도감 로컬 저장 키를 현재 로그인 계정으로 네임스페이스 — 같은 브라우저를 여러 계정이 돌아가며
+// 쓰더라도(학생 기기 공유, 교사가 여러 학생 계정을 순회) 서로의 로컬 캐시가 섞이지 않게 함
+function dexNamespacedKey(baseKey) {
+    return currentUser ? (baseKey + '::' + currentUser) : baseKey;
+}
+
 function loadIdSet(storageKey) {
     try {
-        const raw = localStorage.getItem(storageKey);
+        const raw = localStorage.getItem(dexNamespacedKey(storageKey));
         const arr = raw ? JSON.parse(raw) : [];
         return new Set(Array.isArray(arr) ? arr : []);
     } catch (e) {
@@ -208,7 +214,7 @@ function loadIdSet(storageKey) {
 
 function saveIdSet(storageKey, idSet) {
     try {
-        localStorage.setItem(storageKey, JSON.stringify(Array.from(idSet)));
+        localStorage.setItem(dexNamespacedKey(storageKey), JSON.stringify(Array.from(idSet)));
     } catch (e) {
         // 저장 실패(프라이빗 브라우징 등)해도 이번 플레이 중 도감 표시 자체는 계속 정상 동작함
     }
@@ -236,14 +242,34 @@ const DEX_CHEAT_ALL_KEY        = 'pokemonCatchGame_cheatDexAll_v1';
 const DEX_CHEAT_CAUGHT_ALL_KEY = 'pokemonCatchGame_cheatCaughtAll_v1';
 
 function loadBoolFlag(key) {
-    try { return localStorage.getItem(key) === '1'; } catch (e) { return false; }
+    try { return localStorage.getItem(dexNamespacedKey(key)) === '1'; } catch (e) { return false; }
 }
 function saveBoolFlag(key, value) {
-    try { localStorage.setItem(key, value ? '1' : '0'); } catch (e) { /* 무시 */ }
+    try { localStorage.setItem(dexNamespacedKey(key), value ? '1' : '0'); } catch (e) { /* 무시 */ }
 }
 
 let dexCheatDexAll    = loadBoolFlag(DEX_CHEAT_ALL_KEY);
 let dexCheatCaughtAll = loadBoolFlag(DEX_CHEAT_CAUGHT_ALL_KEY);
+
+// 지금 ownedDex*/dexCheat* 변수에 로드되어 있는 게 누구의 데이터인지 추적 — 스크립트 로드 시점엔
+// 아직 로그인 전이라 currentUser가 null인 상태 그대로 기록해둠(reloadDexForCurrentUserIfNeeded 참고)
+let dexLoadedForUser = currentUser;
+
+// currentUser가 마지막으로 도감을 불러온 사용자와 달라졌으면(로그인/계정 전환) 이전 사용자의
+// 메모리 상태를 버리고 새 사용자 몫으로 다시 로드함. 이 앱은 로그인해도 페이지가 새로고침되지
+// 않는 SPA라, 위 ownedDex*/dexCheat* 변수를 그냥 두면 계정이 바뀌어도 이전 계정 값이 메모리에
+// 그대로 남아 다음 계정의 Firebase 데이터와 섞여버림 — 그걸 막기 위한 재로드 훅.
+// localStorage 읽기라 비용이 거의 없고, 게임 진입(openPokemonCatchPage → loadDexFromCloud)
+// 시점에만 호출되므로 잦은 호출 부담도 없음.
+function reloadDexForCurrentUserIfNeeded() {
+    if (dexLoadedForUser === currentUser) return;
+    dexLoadedForUser = currentUser;
+    ownedDexSpecies    = loadOwnedDex();
+    ownedDexForms      = loadOwnedDexForms();
+    ownedDexShinyForms = loadOwnedDexShinyForms();
+    dexCheatDexAll     = loadBoolFlag(DEX_CHEAT_ALL_KEY);
+    dexCheatCaughtAll  = loadBoolFlag(DEX_CHEAT_CAUGHT_ALL_KEY);
+}
 
 // ===================== 도감 클라우드(Firebase) 동기화 =====================
 // 저장 위치는 studentAccounts와 완전히 분리된 최상위 경로 'pokedex/{학생ID}'.
@@ -267,12 +293,16 @@ function dexCloudRef() {
 
 let dexCloudLoading = false; // 중복 요청 방지용
 
-// 게임 진입 시(openPokemonCatchPage) 1회 호출. 서버 값을 읽어 로컬 Set/플래그와 합집합
-// 병합하고, 서버에는 없고 로컬에만 있던 항목만 골라 다시 서버로 올려보낸다(최초 마이그레이션
-// 겸, 오프라인 중 유실됐을 수 있는 write의 복구). 병합/전송 모두 항목 단위라 다른 기기가
-// 동시에 갱신 중이어도 서로의 기록을 덮어쓰지 않는다.
+// 게임 진입 시(openPokemonCatchPage) 1회 호출. 가장 먼저 계정이 바뀌었으면 로컬 상태를 그
+// 계정 몫으로 다시 로드하고(reloadDexForCurrentUserIfNeeded), 그 다음 서버 값을 읽어 캐치
+// 기록(species/forms/formsShiny)은 로컬 Set과 합집합 병합 후 서버에 없는 항목만 골라 다시
+// 서버로 올려보낸다(최초 마이그레이션 겸, 오프라인 중 유실됐을 수 있는 write의 복구). 병합/전송
+// 모두 항목 단위라 다른 기기가 동시에 갱신 중이어도 서로의 기록을 덮어쓰지 않는다.
+// 치트 플래그(cheatDexAll/cheatCaughtAll)는 캐치 기록과 달리 서버 값만 그대로 신뢰하는 읽기
+// 전용으로 동작함(로컬→서버 역push 없음) — 자세한 이유는 아래 해당 블록의 주석 참고.
 // 네트워크 실패나 미로그인 등으로 서버를 못 읽어도 로컬 캐시만으로 도감은 계속 정상 동작한다.
 function loadDexFromCloud() {
+    reloadDexForCurrentUserIfNeeded();
     const ref = dexCloudRef();
     if (!ref) return;
     if (dexCloudLoading) return;
@@ -290,8 +320,11 @@ function loadDexFromCloud() {
             Object.keys(serverSpecies).forEach(id => { if (serverSpecies[id]) ownedDexSpecies.add(id); });
             Object.keys(serverForms).forEach(id => { if (serverForms[id]) ownedDexForms.add(id); });
             Object.keys(serverFormsShiny).forEach(id => { if (serverFormsShiny[id]) ownedDexShinyForms.add(id); });
-            dexCheatDexAll    = dexCheatDexAll    || !!server.cheatDexAll;
-            dexCheatCaughtAll = dexCheatCaughtAll || !!server.cheatCaughtAll;
+            // 치트 플래그는 로컬 값과 OR로 합치지 않고 서버 값을 그대로 신뢰함(읽기 전용) — 로컬에
+            // 남은 true는 이 계정에 대한 의도된 조작이 아니라 그냥 브라우저에 남은 잔여 상태일 수
+            // 있어서, 서버가 "진짜" 상태를 결정하고 로컬은 표시만 담당함
+            dexCheatDexAll    = !!server.cheatDexAll;
+            dexCheatCaughtAll = !!server.cheatCaughtAll;
 
             saveOwnedDex(ownedDexSpecies);
             saveOwnedDexForms(ownedDexForms);
@@ -304,8 +337,9 @@ function loadDexFromCloud() {
             ownedDexSpecies.forEach(id => { if (!serverSpecies[id]) updates['species/' + id] = true; });
             ownedDexForms.forEach(id => { if (!serverForms[id]) updates['forms/' + id] = true; });
             ownedDexShinyForms.forEach(id => { if (!serverFormsShiny[id]) updates['formsShiny/' + id] = true; });
-            if (dexCheatDexAll && !server.cheatDexAll) updates.cheatDexAll = true;
-            if (dexCheatCaughtAll && !server.cheatCaughtAll) updates.cheatCaughtAll = true;
+            // cheatDexAll/cheatCaughtAll은 여기서 로컬→서버로 절대 밀어 올리지 않음(위에서 이미
+            // 서버 값을 그대로 신뢰하도록 바꿨으므로 애초에 로컬이 서버보다 "앞서있는" 경우가
+            // 없음). 치트를 실제로 켜는 유일한 경로는 applyDexCheatCode()의 명시적 ref.update() 호출뿐
 
             if (Object.keys(updates).length > 0) {
                 ref.update(updates).catch(() => { /* 실패해도 다음 진입 때 다시 시도됨 */ });
