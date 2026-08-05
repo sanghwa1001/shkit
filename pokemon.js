@@ -2744,6 +2744,28 @@ function naturalIdCompare(a, b) {
     return 0;
 }
 
+// naturalIdCompare는 "978-mega" 같은 id를 ["978","-mega"] 두 조각으로, "978-1-mega"는
+// ["978","-","1","-mega"] 네 조각으로 쪼개기 때문에, 두 번째 조각을 문자열로 비교할 때
+// "-mega" > "-"가 되어(같은 자리 비교라 "1"/"2" 숫자 조각까지 못 봄) 978-mega가 978-1-mega/
+// 978-2-mega보다 뒤로 밀려버림 — 일반(비메가) 서브폼은 978/978-1/978-2 순서로 잘 정렬되는데
+// 그 폼들의 메가만 늘어진→뻗은→젖힌으로 꼬이는 상황(2026-08 싸리용 메가 3폼 추가로 발견).
+//
+// 왜 naturalIdCompare 자체를 안 고치고 이 표로 우회하는지: 그 함수는 폼 있는 종 전체(400여
+// 종)의 정렬에서 공용으로 쓰이기 때문에, 알고리즘 자체를 고치면 오늘 발견한 "숫자 서브폼 뒤에
+// 접미사가 붙는 id vs 접미사만 붙는 id" 패턴 말고 다른 접미사 조합(성별/지역폼/코스튬 등)에서도
+// 비교 결과가 달라질 수 있고, 그걸 전부 재검증하긴 비용이 큼. 반면 이 표는 정확히 여기 적힌
+// id끼리 비교될 때만 개입하고 나머지 전부에는 관여하지 않아 위험이 없음. 실제로 전체
+// POKEMON_DATA를 종·버킷별로 묶어서 "같은 버킷 안에 숫자 서브폼+접미사 id와 접미사만 있는
+// id가 공존하는" 케이스를 전수 조사했고(2026-08), 이 패치 시점 기준 싸리용(978) 한 건만
+// 존재함을 확인함 — 그래서 지금은 전역 수정이 실익 없이 위험만 지는 선택이었음.
+// 앞으로 다른 종에도 서브폼별 메가/거다이맥스가 추가돼서 같은 패턴이 또 생기면, 그 id들도
+// 여기에 같은 방식으로 추가하면 됨(또는 위 전수 조사를 다시 돌려서 새로 걸리는 케이스를 확인).
+const DEX_FORM_SORT_OVERRIDE = {
+    '978-mega': 0,
+    '978-1-mega': 1,
+    '978-2-mega': 2,
+};
+
 // 이 species의 모든 폼(대표폼 포함 + 리전/성별/코스튬/그림자 등 일반폼 + 메가진화 + 거다이맥스)을
 // 그려주는데, 각 폼 바로 뒤에 그 폼 전용 "색이 다른"(이로치) 가상 칸을 하나씩 끼워 넣어서 실제
 // 폼과 이로치 칸이 정확히 1:1로 짝지어지게 함(예: 알로라 폼 바로 뒤에 "알로라 색이 다른" 칸).
@@ -2751,7 +2773,8 @@ function naturalIdCompare(a, b) {
 // 잡아본 폼(ownedDexForms 기준, 이로치 칸은 정확히 그 폼을 이로치로 잡았는지 — ownedDexShinyForms
 // 기준)은 원래 색으로, 못 잡은 건 검은 실루엣(그림자) 처리해 형태만 드러나게 함. 정렬은 실제
 // 폼들을 먼저 DEX_FORM_CATEGORY로 정해진 범주(DEX_FORM_BUCKET_ORDER 순서) 안에서 폼 id 자연
-// 순서로 배열한 뒤, 그 순서 그대로 각 폼 뒤에 이로치 짝을 삽입하는 방식(별도 정렬 대상 아님).
+// 순서로 배열한 뒤(DEX_FORM_SORT_OVERRIDE에 둘 다 있으면 그 값을 우선함), 그 순서 그대로 각
+// 폼 뒤에 이로치 짝을 삽입하는 방식(별도 정렬 대상 아님).
 // 이름표는 [원래 폼 이름] vs [색이 다른] 경계, 그리고 DEX_FORM_LABEL_FORCED_SPLIT에 등록된
 // 폼은 그 내부 의미 조각 경계까지 <br>로 강제 줄바꿈하고(자동 줄바꿈에 안 맡김), 그 외 부분은
 // 기존처럼 word-break:keep-all 자동 줄바꿈에 맡김. 칸을 누르면 showDexInfoForm으로 큰 카드가
@@ -2768,7 +2791,10 @@ function renderDexFormGrid(species, repId) {
         .map(id => ({ id, bucket: DEX_FORM_CATEGORY[id] || '기타' }))
         .sort((a, b) => {
             const orderDiff = DEX_FORM_BUCKET_ORDER.indexOf(a.bucket) - DEX_FORM_BUCKET_ORDER.indexOf(b.bucket);
-            return orderDiff !== 0 ? orderDiff : naturalIdCompare(a.id, b.id);
+            if (orderDiff !== 0) return orderDiff;
+            const aOverride = DEX_FORM_SORT_OVERRIDE[a.id], bOverride = DEX_FORM_SORT_OVERRIDE[b.id];
+            if (aOverride !== undefined && bOverride !== undefined) return aOverride - bOverride;
+            return naturalIdCompare(a.id, b.id);
         })
         .map(({ id }) => id);
 
