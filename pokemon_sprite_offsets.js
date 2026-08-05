@@ -4,7 +4,7 @@
 // shinyX, shinyY, shinyW, shinyH: 이로치(front_shiny 계열) 버전 기준, 위와 동일한 방식으로 별도 실측.
 //   대부분 종은 일반/이로치가 같은 그림(색만 다름)이라 x,y,w,h와 거의 같지만, 일부 종(39종)은
 //   일반/이로치의 원본 그림 구조 자체가 달라서 반드시 구분해서 써야 함
-// (v2 이미지팩 실측, 가짜/중복 폼 28종 삭제 반영 — 전체 1544종)
+// (v2 이미지팩 실측, 가짜/중복 폼 28종 삭제 반영 — 전체 1591종, 2026-08 메가진화 확장 47폼 포함)
 const SPRITE_OFFSETS = {
   "432": { "x": -1.0, "y": -1.5, "w": 59, "h": 58, "shinyX": -1.0, "shinyY": -1.5, "shinyW": 59, "shinyH": 58 },
   "774": { "x": 3.5, "y": 0.5, "w": 37, "h": 37, "shinyX": 3.5, "shinyY": 0.5, "shinyW": 37, "shinyH": 37 },
@@ -1549,5 +1549,54 @@ const SPRITE_OFFSETS = {
   "892-gmax": { "x": -0.0, "y": -3.0, "w": 78, "h": 96, "shinyX": -0.0, "shinyY": -3.0, "shinyW": 78, "shinyH": 96 },
   "879-gmax": { "x": 0.5, "y": -0.0, "w": 93, "h": 94, "shinyX": 0.5, "shinyY": -0.0, "shinyW": 93, "shinyH": 94 },
   "823-gmax": { "x": -4.0, "y": 6.0, "w": 170, "h": 124, "shinyX": -4.0, "shinyY": 6.0, "shinyW": 170, "shinyH": 124 },
-  "869-gmax": { "x": 0.5, "y": -0.0, "w": 79, "h": 96, "shinyX": 0.5, "shinyY": -0.0, "shinyW": 79, "shinyH": 96 }
+  "869-gmax": { "x": 0.5, "y": -0.0, "w": 79, "h": 96, "shinyX": 0.5, "shinyY": -0.0, "shinyW": 79, "shinyH": 96 },
+
+  // ===================== 메가진화 확장 (2026-08 패치, 47개 신규) 실측값 =====================
+  "26-mega_x": { "x": 0.0, "y": -3.0, "w": 86, "h": 70, "shinyX": 0.0, "shinyY": -3.0, "shinyW": 86, "shinyH": 70 },
+  "26-mega_y": { "x": -0.5, "y": 0.5, "w": 69, "h": 63, "shinyX": -0.5, "shinyY": 0.5, "shinyW": 69, "shinyH": 63 },
+  "36-mega": { "x": -0.5, "y": -1.0, "w": 89, "h": 64, "shinyX": -0.5, "shinyY": -1.0, "shinyW": 89, "shinyH": 64 },
+  "71-mega": { "x": -1.5, "y": 0.0, "w": 57, "h": 86, "shinyX": -1.5, "shinyY": 0.0, "shinyW": 57, "shinyH": 86 },
+  "121-mega": { "x": 0.5, "y": -1.0, "w": 67, "h": 74, "shinyX": 0.5, "shinyY": -1.0, "shinyW": 67, "shinyH": 74 },
+  "149-mega": { "x": 0.5, "y": 1.5, "w": 81, "h": 115, "shinyX": 0.5, "shinyY": 1.5, "shinyW": 81, "shinyH": 115 },
+  "154-mega": { "x": 1.0, "y": 1.0, "w": 78, "h": 98, "shinyX": 1.0, "shinyY": 1.0, "shinyW": 78, "shinyH": 98 },
+  "160-mega": { "x": 0.5, "y": -3.0, "w": 75, "h": 78, "shinyX": 0.5, "shinyY": -3.0, "shinyW": 75, "shinyH": 78 },
+  "227-mega": { "x": -0.5, "y": -5.0, "w": 89, "h": 64, "shinyX": -0.5, "shinyY": -5.0, "shinyW": 89, "shinyH": 64 },
+  "358-mega": { "x": 1.5, "y": 1.5, "w": 79, "h": 81, "shinyX": 1.5, "shinyY": 1.5, "shinyW": 79, "shinyH": 81 },
+  "359-mega_z": { "x": 3.5, "y": -1.5, "w": 75, "h": 77, "shinyX": 3.5, "shinyY": -1.5, "shinyW": 75, "shinyH": 77 },
+  "398-mega": { "x": 2.5, "y": -0.5, "w": 79, "h": 73, "shinyX": 2.5, "shinyY": -0.5, "shinyW": 79, "shinyH": 73 },
+  "445-mega_z": { "x": 0.0, "y": -5.5, "w": 111, "h": 94, "shinyX": 0.0, "shinyY": -5.5, "shinyW": 111, "shinyH": 94 },
+  "448-mega_z": { "x": -1.5, "y": -0.5, "w": 91, "h": 93, "shinyX": -1.5, "shinyY": -0.5, "shinyW": 91, "shinyH": 93 },
+  "478-mega": { "x": 0.0, "y": 0.0, "w": 74, "h": 92, "shinyX": 0.0, "shinyY": 0.0, "shinyW": 74, "shinyH": 92 },
+  "485-mega": { "x": 1.5, "y": -20.5, "w": 132, "h": 82, "shinyX": 1.5, "shinyY": -20.5, "shinyW": 132, "shinyH": 82 },
+  "491-mega": { "x": 1.5, "y": -6.0, "w": 95, "h": 72, "shinyX": 1.5, "shinyY": -6.0, "shinyW": 95, "shinyH": 72 },
+  "500-mega": { "x": 0.5, "y": -1.0, "w": 73, "h": 88, "shinyX": 0.5, "shinyY": -1.0, "shinyW": 73, "shinyH": 88 },
+  "530-mega": { "x": 2.0, "y": -4.5, "w": 86, "h": 69, "shinyX": 2.0, "shinyY": -4.5, "shinyW": 86, "shinyH": 69 },
+  "545-mega": { "x": -1.5, "y": -2.5, "w": 81, "h": 89, "shinyX": -1.5, "shinyY": -2.5, "shinyW": 81, "shinyH": 89 },
+  "560-mega": { "x": -2.0, "y": -1.5, "w": 48, "h": 65, "shinyX": -2.0, "shinyY": -1.5, "shinyW": 48, "shinyH": 65 },
+  "604-mega": { "x": 1.5, "y": -2.0, "w": 87, "h": 52, "shinyX": 1.5, "shinyY": -2.0, "shinyW": 87, "shinyH": 52 },
+  "609-mega": { "x": -1.0, "y": -3.0, "w": 72, "h": 88, "shinyX": -1.0, "shinyY": -3.0, "shinyW": 72, "shinyH": 88 },
+  "623-mega": { "x": -1.5, "y": 0.0, "w": 107, "h": 104, "shinyX": -1.5, "shinyY": 0.0, "shinyW": 107, "shinyH": 104 },
+  "652-mega": { "x": 1.0, "y": -4.0, "w": 82, "h": 78, "shinyX": 1.0, "shinyY": -4.0, "shinyW": 82, "shinyH": 78 },
+  "655-mega": { "x": 2.0, "y": -1.0, "w": 74, "h": 78, "shinyX": 2.0, "shinyY": -1.0, "shinyW": 74, "shinyH": 78 },
+  "658-mega": { "x": 1.0, "y": 1.5, "w": 70, "h": 91, "shinyX": 1.0, "shinyY": 0.5, "shinyW": 70, "shinyH": 91 },
+  "668-mega": { "x": -0.5, "y": -2.0, "w": 83, "h": 84, "shinyX": -0.5, "shinyY": -2.0, "shinyW": 83, "shinyH": 84 },
+  "670-mega": { "x": -2.0, "y": -1.0, "w": 88, "h": 76, "shinyX": -2.0, "shinyY": -1.0, "shinyW": 88, "shinyH": 76 },
+  "678-mega": { "x": 1.0, "y": -3.5, "w": 44, "h": 93, "shinyX": 1.0, "shinyY": -3.5, "shinyW": 44, "shinyH": 93 },
+  "687-mega": { "x": -0.5, "y": -4.5, "w": 80, "h": 90, "shinyX": -0.5, "shinyY": -4.5, "shinyW": 80, "shinyH": 90 },
+  "689-mega": { "x": -0.5, "y": -0.5, "w": 73, "h": 87, "shinyX": -0.5, "shinyY": -0.5, "shinyW": 73, "shinyH": 87 },
+  "691-mega": { "x": -1.5, "y": 1.0, "w": 85, "h": 88, "shinyX": -1.5, "shinyY": 1.0, "shinyW": 85, "shinyH": 88 },
+  "701-mega": { "x": 0.5, "y": -4.0, "w": 87, "h": 72, "shinyX": 0.5, "shinyY": -4.0, "shinyW": 87, "shinyH": 72 },
+  "718-mega": { "x": -2.0, "y": 1.5, "w": 86, "h": 93, "shinyX": -2.0, "shinyY": 1.5, "shinyW": 86, "shinyH": 93 },
+  "740-mega": { "x": 4.0, "y": -16.0, "w": 95, "h": 89, "shinyX": 4.0, "shinyY": -16.0, "shinyW": 95, "shinyH": 89 },
+  "768-mega": { "x": -2.0, "y": 0.0, "w": 104, "h": 94, "shinyX": -2.0, "shinyY": 0.0, "shinyW": 104, "shinyH": 94 },
+  "780-mega": { "x": -1.0, "y": 0.5, "w": 68, "h": 93, "shinyX": -1.0, "shinyY": 0.5, "shinyW": 68, "shinyH": 93 },
+  "801-mega": { "x": 1.0, "y": 1.5, "w": 84, "h": 77, "shinyX": 1.0, "shinyY": 1.5, "shinyW": 84, "shinyH": 77 },
+  "807-mega": { "x": 3.5, "y": -18.5, "w": 77, "h": 81, "shinyX": 4.5, "shinyY": -16.5, "shinyW": 77, "shinyH": 81 },
+  "870-mega": { "x": -0.5, "y": -1.5, "w": 93, "h": 71, "shinyX": -0.5, "shinyY": -1.5, "shinyW": 93, "shinyH": 71 },
+  "952-mega": { "x": 2.0, "y": -2.5, "w": 62, "h": 73, "shinyX": 2.0, "shinyY": -2.5, "shinyW": 62, "shinyH": 73 },
+  "970-mega": { "x": 2.5, "y": -2.5, "w": 110, "h": 120, "shinyX": 2.5, "shinyY": -2.5, "shinyW": 110, "shinyH": 120 },
+  "978-mega": { "x": 0.5, "y": -1.0, "w": 107, "h": 74, "shinyX": 0.5, "shinyY": -1.0, "shinyW": 107, "shinyH": 74 },
+  "978-1-mega": { "x": 0.5, "y": -1.5, "w": 91, "h": 81, "shinyX": 0.5, "shinyY": -1.5, "shinyW": 91, "shinyH": 81 },
+  "978-2-mega": { "x": 0.0, "y": -1.0, "w": 98, "h": 76, "shinyX": 0.0, "shinyY": -1.0, "shinyW": 98, "shinyH": 76 },
+  "998-mega": { "x": 2.5, "y": -1.0, "w": 83, "h": 92, "shinyX": 2.5, "shinyY": -1.0, "shinyW": 83, "shinyH": 92 }
 };

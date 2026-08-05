@@ -1,6 +1,7 @@
 // 엑셀(pokemon_data_최종확정_v2.xlsx)에서 생성된 포켓몬 이름/종족값(CP)/카테고리 데이터
-// 1~9세대(1~1025번) + 폼 차이(성별/지역폼/특수폼/코스튬 등) + 메가진화(mega) + 거다이맥스(gmax) 전부 포함, 총 1544종
+// 1~9세대(1~1025번) + 폼 차이(성별/지역폼/특수폼/코스튬 등) + 메가진화(mega) + 거다이맥스(gmax) 전부 포함, 총 1591종
 // (가짜/중복 폼 28종은 삭제 완료 — 호바귀·펌킨인 사이즈폼, 오거폰 중복 가면, 우츠동·에레브 섀도우폼 등)
+// (2026-08 메가진화 확장 패치로 신규 메가 47폼 추가, 1544 → 1591종)
 // category: "normal"(일반 야생 출현) / "mega"(메가진화) / "gmax"(거다이맥스)
 // species: 폼 차이를 묶어서 그룹화할 때 쓰는 기본 번호 (접미사 제외)
 const POKEMON_DATA = {
@@ -1547,5 +1548,57 @@ const POKEMON_DATA = {
   "1024": { "name": "테라파고스", "bst": 450, "category": "normal", "species": "1024" },
   "1024-1": { "name": "테라파고스", "bst": 600, "category": "normal", "species": "1024" },
   "1024-2": { "name": "테라파고스", "bst": 700, "category": "normal", "species": "1024" },
-  "1025": { "name": "복숭악동", "bst": 600, "category": "normal", "species": "1025" }
+  "1025": { "name": "복숭악동", "bst": 600, "category": "normal", "species": "1025" },
+
+  // ===================== 메가진화 확장 (2026-08 패치, 47개 신규) =====================
+  // 신규 41종(각 1폼) + 앱솔/한카리아스/루카리오 2번째 메가(Z) + 라이츄 X/Y +
+  // 싸리용 기존 3서브폼 각각에 메가 1개. bst는 기존 메가 48개 전수와 정확히 일치하는
+  // 공식(메가bst = 기본bst × 2 + 200)으로 산출.
+  "26-mega_x": { "name": "메가라이츄X", "bst": 1170, "category": "mega", "species": "26" },
+  "26-mega_y": { "name": "메가라이츄Y", "bst": 1170, "category": "mega", "species": "26" },
+  "36-mega": { "name": "메가픽시", "bst": 1166, "category": "mega", "species": "36" },
+  "71-mega": { "name": "메가우츠보트", "bst": 1180, "category": "mega", "species": "71" },
+  "121-mega": { "name": "메가아쿠스타", "bst": 1240, "category": "mega", "species": "121" },
+  "149-mega": { "name": "메가망나뇽", "bst": 1400, "category": "mega", "species": "149" },
+  "154-mega": { "name": "메가메가니움", "bst": 1250, "category": "mega", "species": "154" },
+  "160-mega": { "name": "메가장크로다일", "bst": 1260, "category": "mega", "species": "160" },
+  "227-mega": { "name": "메가무장조", "bst": 1130, "category": "mega", "species": "227" },
+  "358-mega": { "name": "메가치렁", "bst": 1110, "category": "mega", "species": "358" },
+  "359-mega_z": { "name": "메가앱솔Z", "bst": 1130, "category": "mega", "species": "359" },
+  "398-mega": { "name": "메가찌르호크", "bst": 1170, "category": "mega", "species": "398" },
+  "445-mega_z": { "name": "메가한카리아스Z", "bst": 1400, "category": "mega", "species": "445" },
+  "448-mega_z": { "name": "메가루카리오Z", "bst": 1250, "category": "mega", "species": "448" },
+  "478-mega": { "name": "메가눈여아", "bst": 1160, "category": "mega", "species": "478" },
+  "485-mega": { "name": "메가히드런", "bst": 1400, "category": "mega", "species": "485" },
+  "491-mega": { "name": "메가다크라이", "bst": 1400, "category": "mega", "species": "491" },
+  "500-mega": { "name": "메가염무왕", "bst": 1256, "category": "mega", "species": "500" },
+  "530-mega": { "name": "메가몰드류", "bst": 1216, "category": "mega", "species": "530" },
+  "545-mega": { "name": "메가펜드라", "bst": 1170, "category": "mega", "species": "545" },
+  "560-mega": { "name": "메가곤율거니", "bst": 1176, "category": "mega", "species": "560" },
+  "604-mega": { "name": "메가저리더프", "bst": 1230, "category": "mega", "species": "604" },
+  "609-mega": { "name": "메가샹델라", "bst": 1240, "category": "mega", "species": "609" },
+  "623-mega": { "name": "메가골루그", "bst": 1166, "category": "mega", "species": "623" },
+  "652-mega": { "name": "메가브리가론", "bst": 1260, "category": "mega", "species": "652" },
+  "655-mega": { "name": "메가마폭시", "bst": 1268, "category": "mega", "species": "655" },
+  "658-mega": { "name": "메가개굴닌자", "bst": 1260, "category": "mega", "species": "658" },
+  "668-mega": { "name": "메가화염레오", "bst": 1214, "category": "mega", "species": "668" },
+  "670-mega": { "name": "메가플라엣테", "bst": 942, "category": "mega", "species": "670" },
+  "678-mega": { "name": "메가냐오닉스", "bst": 1132, "category": "mega", "species": "678" },
+  "687-mega": { "name": "메가칼라마네로", "bst": 1164, "category": "mega", "species": "687" },
+  "689-mega": { "name": "메가거북손데스", "bst": 1174, "category": "mega", "species": "689" },
+  "691-mega": { "name": "메가드래캄", "bst": 1188, "category": "mega", "species": "691" },
+  "701-mega": { "name": "메가루차불", "bst": 1200, "category": "mega", "species": "701" },
+  "718-mega": { "name": "메가지가르데", "bst": 1400, "category": "mega", "species": "718" },
+  "740-mega": { "name": "메가모단단게", "bst": 1156, "category": "mega", "species": "740" },
+  "768-mega": { "name": "메가갑주무사", "bst": 1260, "category": "mega", "species": "768" },
+  "780-mega": { "name": "메가할비롱", "bst": 1170, "category": "mega", "species": "780" },
+  "801-mega": { "name": "메가마기아나", "bst": 1400, "category": "mega", "species": "801" },
+  "807-mega": { "name": "메가제라오라", "bst": 1400, "category": "mega", "species": "807" },
+  "870-mega": { "name": "메가대여르", "bst": 1140, "category": "mega", "species": "870" },
+  "952-mega": { "name": "메가스코빌런", "bst": 1172, "category": "mega", "species": "952" },
+  "970-mega": { "name": "메가킬라플로르", "bst": 1250, "category": "mega", "species": "970" },
+  "978-mega": { "name": "메가싸리용", "bst": 1150, "category": "mega", "species": "978" },
+  "978-1-mega": { "name": "메가싸리용", "bst": 1150, "category": "mega", "species": "978" },
+  "978-2-mega": { "name": "메가싸리용", "bst": 1150, "category": "mega", "species": "978" },
+  "998-mega": { "name": "메가드닐레이브", "bst": 1400, "category": "mega", "species": "998" },
 };
