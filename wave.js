@@ -21,7 +21,26 @@ db.ref('wave/clicks').on('value', snap => {
     if (document.getElementById('wave-page').classList.contains('active')) renderWaveRoom();
 });
 
-function enterWaveRoom() { if (isAdmin) { db.ref('wave/state/isOpen').set(true); } else { const pRef = db.ref('wave/participants/' + currentUser); pRef.once('value', snap => { if (!snap.val()) pRef.set({ status: 'waiting', isOnline: true }); else pRef.update({ isOnline: true }); pRef.child('isOnline').onDisconnect().set(false); }); } showPage('wave-page'); renderWaveRoom(); }
+// 재연결 시 파도타기방 프레즌스(isOnline) 자동 복구 — 지금 이 방(wave-page)에 있을 때만 복구함.
+// 이미 명시적으로 방을 나간 뒤(exitWaveRoom) 다른 이유로 재연결된 경우까지 "들어와 있다"고
+// 잘못 표시하지 않기 위해 활성 페이지 여부로 가드함
+db.ref('.info/connected').on('value', snap => {
+    if (snap.val() === true && !isAdmin && currentUser && document.getElementById('wave-page').classList.contains('active')) {
+        markWavePresent();
+    }
+});
+
+// 파도타기 참가자 프레즌스 등록(최초 입장/재연결 공용)
+function markWavePresent() {
+    const pRef = db.ref('wave/participants/' + currentUser);
+    pRef.once('value', snap => {
+        if (!snap.val()) pRef.set({ status: 'waiting', isOnline: true });
+        else pRef.update({ isOnline: true });
+        pRef.child('isOnline').onDisconnect().set(false);
+    });
+}
+
+function enterWaveRoom() { if (isAdmin) { db.ref('wave/state/isOpen').set(true); } else { markWavePresent(); } showPage('wave-page'); renderWaveRoom(); }
 function exitWaveRoom() { if (isAdmin) { db.ref('wave/state').update({ isOpen: false, isStarted: false, shuffledIds: [] }); db.ref('wave/participants').remove(); db.ref('wave/clicks').remove(); showPage('student-lobby-page'); } else { const pRef = db.ref('wave/participants/' + currentUser); pRef.child('isOnline').onDisconnect().cancel(); if (waveState.isStarted) pRef.update({ isOnline: false }); else pRef.remove(); showPage('student-lobby-page'); } }
 function toggleWaveReady() { if (waveState.isStarted) return; const myData = waveParticipants[currentUser]; if (!myData) return; db.ref('wave/participants/' + currentUser).update({ status: myData.status === 'ready' ? 'waiting' : 'ready' }); }
 function startWaveGame() { const onlineIds = Object.keys(waveParticipants).filter(id => waveParticipants[id].isOnline !== false); if (onlineIds.length < 4) return alert('최소 4명 이상이어야 합니다.'); if (!onlineIds.every(id => waveParticipants[id].status === 'ready')) return alert('모두 준비되지 않았습니다!'); db.ref('wave/state').update({ isStarted: true, shuffledIds: shuffleArray([...onlineIds]) }); db.ref('wave/clicks').remove(); }

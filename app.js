@@ -18,8 +18,9 @@ const ALL_SHOP_AVATARS = ['1.gif', '2.gif', '3.gif', '4.gif', '5.gif', '6.gif', 
 let currentUser = null;
 let myCurrentAvatar = null;
 let tempSelectedAvatar = null; 
-let isAdmin = false; 
-let selectedStudentsForGems = []; 
+let isAdmin = false;
+let hasEnteredLobby = false; // 닉네임 입력을 마치고 onlineUsers에 정식 등록된 상태인지(재연결 프레즌스 복구 가드용)
+let selectedStudentsForGems = [];
 let pendingRequests = []; 
 let adminShopReturnPage = 'admin-menu-page'; 
 let adminManageReturnPage = 'admin-menu-page';
@@ -113,6 +114,20 @@ db.ref('studentAccounts').on('value', (snapshot) => {
 db.ref('onlineUsers').on('value', (snapshot) => {
     localOnlineUsers = snapshot.val() || {};
     if (document.getElementById('student-lobby-page').classList.contains('active')) renderOnlineUsers();
+});
+
+// 재연결 시 대기실(onlineUsers) 프레즌스 자동 복구
+// 순간적인 연결 끊김(와이파이 끊김/태블릿 절전모드 등) 후 자동 재연결되면, 끊겼을 때 예약돼있던
+// onDisconnect(remove)가 이미 실행돼 대기실에서 사라진 것처럼 보임. .info/connected가 다시
+// true가 될 때마다(최초 접속 포함) onlineUsers를 재기록하고 onDisconnect를 재등록해 복구함
+// (Firebase 공식 프레즌스 패턴). hasEnteredLobby로 로그인 직후~닉네임 입력 중엔 건너뜀
+db.ref('.info/connected').on('value', (snapshot) => {
+    if (snapshot.val() === true && currentUser && !isAdmin && hasEnteredLobby) {
+        const nickname = localStudentAccounts[currentUser]?.nickname || currentUser;
+        const myOnlineRef = db.ref('onlineUsers/' + currentUser);
+        myOnlineRef.set({ avatarId: myCurrentAvatar, nickname: nickname });
+        myOnlineRef.onDisconnect().remove();
+    }
 });
 
 db.ref('shopItems').on('value', (snapshot) => {
@@ -606,8 +621,9 @@ function enterLobbyWithNickname() {
 
     const myOnlineRef = db.ref('onlineUsers/' + currentUser);
     myOnlineRef.set({ avatarId: myCurrentAvatar, nickname: finalNickname });
-    myOnlineRef.onDisconnect().remove(); 
-    
+    myOnlineRef.onDisconnect().remove();
+    hasEnteredLobby = true;
+
     const chatInput = document.getElementById('chat-input');
     const chatSendBtn = document.getElementById('chat-send-btn');
     if (isChatMuted) {
@@ -699,13 +715,14 @@ function logoutStudent() {
     }
     currentUser = null;
     isAdmin = false;
-    
+    hasEnteredLobby = false;
+
     document.getElementById('admin-chat-reset-btn').style.display = 'none';
     document.getElementById('admin-mute-btn').style.display = 'none';
-    
+
     document.getElementById('student-learn-btn').style.display = 'none';
     document.getElementById('admin-learn-lobby-btn').style.display = 'none';
-    
+
     document.getElementById('admin-gem-controls').style.display = 'none';
     document.getElementById('student-gem-controls').style.display = 'none';
     document.getElementById('admin-shop-lobby-btn').style.display = 'none';
@@ -715,7 +732,7 @@ function logoutStudent() {
     document.getElementById('admin-hf-btn').style.display = 'none';
     document.getElementById('admin-wave-btn').style.display = 'none';
     document.getElementById('admin-back-lobby-btn').style.display = 'none';
-    
+
     selectedStudentsForGems = [];
     showPage('main-page');
 }

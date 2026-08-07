@@ -21,8 +21,26 @@ db.ref('highfive/requests').on('value', snap => {
     if (document.getElementById('highfive-page').classList.contains('active')) renderHighFiveRoom();
 });
 
-// 하이파이브 및 파도타기 생략(원형 유지)
-function enterHighFiveRoom() { if (isAdmin) { db.ref('highfive/state/isOpen').set(true); } else { const pRef = db.ref('highfive/participants/' + currentUser); pRef.once('value', snap => { if (!snap.val()) pRef.set({ status: 'waiting', pairId: null, pairColor: null, isOnline: true }); else pRef.update({ isOnline: true }); pRef.child('isOnline').onDisconnect().set(false); }); } selectedHfUser = null; showPage('highfive-page'); renderHighFiveRoom(); }
+// 재연결 시 하이파이브방 프레즌스(isOnline) 자동 복구 — 지금 이 방(highfive-page)에 있을 때만 복구함.
+// 이미 명시적으로 방을 나간 뒤(exitHighFiveRoom) 다른 이유로 재연결된 경우까지 "들어와 있다"고
+// 잘못 표시하지 않기 위해 활성 페이지 여부로 가드함
+db.ref('.info/connected').on('value', snap => {
+    if (snap.val() === true && !isAdmin && currentUser && document.getElementById('highfive-page').classList.contains('active')) {
+        markHfPresent();
+    }
+});
+
+// 하이파이브 참가자 프레즌스 등록(최초 입장/재연결 공용)
+function markHfPresent() {
+    const pRef = db.ref('highfive/participants/' + currentUser);
+    pRef.once('value', snap => {
+        if (!snap.val()) pRef.set({ status: 'waiting', pairId: null, pairColor: null, isOnline: true });
+        else pRef.update({ isOnline: true });
+        pRef.child('isOnline').onDisconnect().set(false);
+    });
+}
+
+function enterHighFiveRoom() { if (isAdmin) { db.ref('highfive/state/isOpen').set(true); } else { markHfPresent(); } selectedHfUser = null; showPage('highfive-page'); renderHighFiveRoom(); }
 function exitHighFiveRoom() { if (isAdmin) { db.ref('highfive/state').update({ isOpen: false, isStarted: false, pairCount: 0, shuffledIds: [] }); db.ref('highfive/participants').remove(); db.ref('highfive/requests').remove(); showPage('student-lobby-page'); } else { const pRef = db.ref('highfive/participants/' + currentUser); pRef.child('isOnline').onDisconnect().cancel(); if (hfState.isStarted) pRef.update({ isOnline: false }); else pRef.remove(); showPage('student-lobby-page'); } }
 function toggleHfReady() { if (hfState.isStarted) return; const myData = hfParticipants[currentUser]; if (!myData) return; db.ref('highfive/participants/' + currentUser).update({ status: myData.status === 'ready' ? 'waiting' : 'ready' }); }
 function startHfGame() { const onlineIds = Object.keys(hfParticipants).filter(id => hfParticipants[id].isOnline !== false); if (onlineIds.length < 2) return alert('최소 2명 이상이어야 합니다.'); if (!onlineIds.every(id => hfParticipants[id].status === 'ready')) return alert('모두 준비되지 않았습니다!'); db.ref('highfive/state').update({ isStarted: true, pairCount: 0, shuffledIds: shuffleArray([...onlineIds]) }); db.ref('highfive/requests').remove(); }
